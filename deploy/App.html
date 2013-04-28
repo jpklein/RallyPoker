@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Planning Poker</title>
+	<script type="text/javascript" src="/apps/2.0p5/sdk.js"></script>
+	<script type="text/javascript">
+Ext.define('PokerTableApp', {
+	extend: 'Rally.app.App',
+
+	initComponent: function() {
+		this.callParent(arguments);
+		this.teamMembers = {};
+		this.ProjectStore = Ext.create('Rally.data.WsapiDataStore', {
+			model: 'Project',
+			fetch: ['TeamMembers'],
+			filters: [
+				{ property: 'ObjectID', value: this.getContext().getProject().ObjectID }
+			],
+			autoLoad: true,
+			listeners: {
+				beforeload: function(store) {
+					this.getEl().mask('Loading...');
+				},
+				load: this._loadProjectStore,
+				scope: this
+			}
+			// @todo initialize the list of stories - includes hashed messages
+		});
+	},
+
+	launch: function() {
+		this.add({
+			xtype: 'component',
+			// Example message contents: UserID + 4-bit point-selection value
+			html: this.TurnMessage(this.Base62).compile(this.getContext().getUser().ObjectID, 020) // 'Welcome to the poker table!',
+		});
+		// @todo initialize poker deck - map point values, set up card presentation
+		// @tooo initialize Team Members - thumbnails for 'chat heads'
+	},
+
+	/**
+	 * Base-62 lib to obfuscate numeric strings for turn-based messaging
+	 * All praises due - https://github.com/andrew/base62.js
+	 */
+	Base62: (function (my) {
+		my.chars = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+		my.encode = function(i){
+			if (i === 0) {return '0'}
+			var s = ''
+			while (i > 0) {
+				s = this.chars[i % 62] + s
+				i = Math.floor(i/62)
+			}
+			return s
+		};
+		my.decode = function(a,b,c,d){
+			for (
+				b = c = (
+					a === (/\W|_|^$/.test(a += "") || a)
+					) - 1;
+				d = a.charCodeAt(c++);
+				)
+				b = b * 62 + d - [, 48, 29, 87][d >> 5];
+			return b
+		};
+		return my;
+	}({})),
+
+	/**
+	 * Unix Timestamp + strings from arguments
+	 * ==> encoded message + custom delimiters
+	 */
+	TurnMessage: function (my) {
+		my.delimiters = ["/", "."]
+		my.compile = function(){
+			var args = [].slice.apply(arguments),
+				l = args.unshift(new Date().getTime()),
+				s = ''
+			for (var i = 0, len = l; i < len; i++) {
+			  s += (this.delimiters[i] || this.delimiters[1]) + this.encode(args[i])
+			};
+			return s
+		}
+		my.decompile = function(){
+			// @todo decompose incoming messages
+		}
+		return my;
+	},
+
+	_loadProjectStore: function(store, result, success) {
+		if(success) {
+			var t = result[0].data.TeamMembers,
+				uid;
+			for(var i=0; i<t.length; i++) {
+				uid = t[i]._ref.match(/\d+$/)[0];
+				this.teamMembers[uid] = t[i];
+			}
+
+			var welcome = 'You are a ' + (this.teamMembers.hasOwnProperty(this.getContext().getUser().ObjectID) ? 'Pig. Oink, oink.' : 'Chicken. Try harder!');
+			this.add({
+				xtype: 'component',
+				html: welcome,
+			});
+
+			this.getEl().unmask();
+		}
+	}
+});
+Rally.launchApp('PokerTableApp', {
+	name: 'Planning Poker'
+});
+	</script>
+</head>
+<body></body>
