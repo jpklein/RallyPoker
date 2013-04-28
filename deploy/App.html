@@ -29,10 +29,26 @@ Ext.define('PokerTableApp', {
 	},
 
 	launch: function() {
+		// Example message contents: UserID + 4-bit point-selection value
+		var message = [this.getContext().getUser().ObjectID, 020];
+		var encoded = this.TurnMessage.compile(message, this.Base62.encode);
+		var decoded = this.TurnMessage.decompile(encoded, this.Base62.decode);
 		this.add({
 			xtype: 'component',
-			// Example message contents: UserID + 4-bit point-selection value
-			html: this.TurnMessage(this.Base62).compile(this.getContext().getUser().ObjectID, 020) // 'Welcome to the poker table!',
+			html: message.join(" + ") + "<br />" + encoded + "<br />" + decoded.join(" + "), // 'Welcome to the poker table!',
+			listeners: {
+				afterrender: function() {
+					Ext.create('Rally.ui.tooltip.ToolTip', {
+						target: this.getEl(), //Ext.getCmp('appwrapper'),
+						html: 'Click the gear to view it fullscreen!',
+						closableOnce: true,
+						closeAction: 'destroy',
+						autoShow: true,
+						shadow: 'drop',
+						// defaultAlign: 'tr-tr',
+					});
+				}
+			},
 		});
 		// @todo initialize poker deck - map point values, set up card presentation
 		// @tooo initialize Team Members - thumbnails for 'chat heads'
@@ -42,50 +58,58 @@ Ext.define('PokerTableApp', {
 	 * Base-62 lib to obfuscate numeric strings for turn-based messaging
 	 * All praises due - https://github.com/andrew/base62.js
 	 */
-	Base62: (function (my) {
-		my.chars = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-		my.encode = function(i){
-			if (i === 0) {return '0'}
-			var s = ''
-			while (i > 0) {
-				s = this.chars[i % 62] + s
-				i = Math.floor(i/62)
-			}
-			return s
+	Base62: (function (){
+		var chars = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+		return {
+			encode: function(i){
+				if (i === 0) {return '0'}
+				var s = '';
+				while (i > 0) {
+					s = chars[i % 62] + s;
+					i = Math.floor(i/62);
+				}
+				return s;
+			},
+			decode: function(a,b,c,d){
+				for (
+					b = c = (a === (/\W|_|^$/.test(a += "") || a)) - 1;
+					d = a.charCodeAt(c++);
+				) {
+					b = b * 62 + d - [, 48, 29, 87][d >> 5];
+				}
+				return b
+			},
 		};
-		my.decode = function(a,b,c,d){
-			for (
-				b = c = (
-					a === (/\W|_|^$/.test(a += "") || a)
-					) - 1;
-				d = a.charCodeAt(c++);
-				)
-				b = b * 62 + d - [, 48, 29, 87][d >> 5];
-			return b
-		};
-		return my;
-	}({})),
+	}()),
 
 	/**
 	 * Unix Timestamp + strings from arguments
 	 * ==> encoded message + custom delimiters
 	 */
-	TurnMessage: function (my) {
-		my.delimiters = ["/", "."]
-		my.compile = function(){
-			var args = [].slice.apply(arguments),
-				l = args.unshift(new Date().getTime()),
-				s = ''
-			for (var i = 0, len = l; i < len; i++) {
-			  s += (this.delimiters[i] || this.delimiters[1]) + this.encode(args[i])
-			};
-			return s
-		}
-		my.decompile = function(){
-			// @todo decompose incoming messages
-		}
-		return my;
-	},
+	TurnMessage: (function (){
+		var sep = ["/", "&"];
+		return {
+			compile: function(M){
+				var i, ln = M.unshift(new Date().getTime()), s = "";
+				for (i = 0; i < ln; i++) {
+					s += (sep[i] || sep[1]) + (arguments[1] ? arguments[1](M[i]) : M[i]);
+				}
+				return s;
+			},
+			decompile: function(s){
+				var r = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$");
+				if (!r.test(s)) {return false}
+				var M = s.slice(1).split(sep[1]);
+				if (arguments[1]) {
+					var i, ln = M.length;
+					for (i = 0; i < ln; i++) {
+						M[i] = arguments[1](M[i]);
+					}
+				}
+				return M;
+			},
+		};
+	}()),
 
 	_loadProjectStore: function(store, result, success) {
 		if(success) {
