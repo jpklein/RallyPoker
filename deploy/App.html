@@ -6,6 +6,7 @@
 	<script type="text/javascript">
 Ext.define('PokerTableApp', {
 	extend: 'Rally.app.App',
+	layout: 'fit', // Sets child tabpanel to 100% height
 
 	initComponent: function() {
 		this.callParent(arguments);
@@ -24,11 +25,53 @@ Ext.define('PokerTableApp', {
 				load: this._loadProjectStore,
 				scope: this
 			}
-			// @todo initialize the list of stories - includes hashed messages
 		});
 	},
 
 	launch: function() {
+		// @todo initialize dropdown list of iterations - default to current
+		// Ext.create('Ext.Container', {
+		// 	items: [{xtype: 'rallyiterationcombobox'}],
+		// 	renderTo: Ext.getBody().dom
+		// });
+
+		// @todo initialize the list of stories - includes hashed messages
+		this.add({
+			xtype: 'tabpanel',
+			renderTo: document.body,
+			tabBar: {
+				orientation: 'vertical',
+			},
+			tabPosition: 'left',
+			plain: true,
+			items: [{
+				title: 'Foo'
+			}, {
+				title: 'Bar',
+				tabConfig: {
+					title: 'Custom Title',
+					tooltip: 'A button tooltip' // not working?
+				}
+			}]
+		});
+
+		// @todo fetch TurnMessages embedded in DiscussionStream 
+		// this.DiscussionStore = Ext.create('Rally.data.WsapiDataStore', {
+		// 	model: 'ConversationPost',
+		// 	fetch: ['Text'],
+		// 	// filters: [
+		// 	// 	{ property: 'Artifact', value: this.getContext().getProject().ObjectID }
+		// 	// ],
+		// 	autoLoad: true,
+		// 	listeners: {
+		// 		// beforeload: function(store) {
+		// 		// 	this.getEl().mask('Loading...');
+		// 		// },
+		// 		load: this._loadDiscussionStore,
+		// 		scope: this
+		// 	}
+		// });
+
 		// Example message contents: UserID + 4-bit point-selection value
 		var message = [this.getContext().getUser().ObjectID, 020];
 		var encoded = this.TurnMessage.compile(message, this.Base62.encode);
@@ -128,7 +171,11 @@ Ext.define('PokerTableApp', {
 
 			this.getEl().unmask();
 		}
-	}
+	},
+
+	_loadDiscussionStore: function(store, result, success) {
+		if(success) {}
+	},
 });
 Rally.launchApp('PokerTableApp', {
 	name: 'Planning Poker'
