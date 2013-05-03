@@ -1,4 +1,1 @@
-rallypoker
-==========
-
-Planning Poker app for Rally SDK 2.0 written in CoffeeScript
+The wireframe branch is used exclusively to house wireframes and screenshots used in the development of this project. Wireframes are saved as .ep files created by [Evolus Pencil](http://pencil.evolus.vn/). Feel free to iterate on them and contribute your ideas!
