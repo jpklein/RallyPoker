@@ -7,4 +7,4 @@ Team members viewing this app will first see a list of stories queued up for rev
 
 Rally users with access to the project that are not team members will be presented with the same interface, except for two important changes. While they will not be able to select from a deck to size the story, they will be able to flip the face-down cards of team members who have already cast their vote. Additionally, they will be able to assign a point value directly to the story once the team members' cards are revealed. This value will then be be displayed alongside the story's name in the app's story list.
 
-![wireframe](https://raw.github.com/jpklein/RallyPoker/wireframes/TeamMember_v1.png)
+<img src="https://raw.github.com/jpklein/RallyPoker/wireframes/TeamMember_v1.png" width="600" height="400" style="margin:2em 0 0 2em;border:1px solid #222">
