@@ -8,3 +8,13 @@ Team members viewing this app will first see a list of stories queued up for rev
 Rally users with access to the project that are not team members will be presented with the same interface, except for two important changes. While they will not be able to select from a deck to size the story, they will be able to flip the face-down cards of team members who have already cast their vote. Additionally, they will be able to assign a point value directly to the story once the team members' cards are revealed. This value will then be be displayed alongside the story's name in the app's story list.
 
 <img src="https://raw.github.com/jpklein/RallyPoker/wireframes/TeamMember.png">
+
+### Developer Quickstart
+1. Install [Node.js](http://nodejs.org/) and the [Node Package Manager](http://npmjs.org/) (npm)
+2. Install the [CoffeeScript](http://coffeescript.org/#installation) parser 
+3. Install the [Rally App Builder](https://github.com/RallyApps/rally-app-builder)
+4. Clone the `dev` branch of this repository: `git clone --branch dev https://github.com/jpklein/RallyPoker.git`
+5. If you are working on a specific [issue](https://github.com/jpklein/RallyPoker/issues?state=open), check out a branch using the format: `gh-{issue#}`
+6. Enable auto-compilation of the CoffeeScript file without the [top-level function safety wrapper](http://coffeescript.org/#lexical-scope): `coffee --watch -b --compile App.coffee`
+7. After making a change, rebuild the Rally files: `rally-app-builder build`
+8. Open `App-debug.html` in a browser to test locally (Rally login required)
