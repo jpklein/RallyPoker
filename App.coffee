@@ -5,22 +5,14 @@ Ext.define 'RallyPokerApp', {
   layout: 'card'
   items: [{
     id: 'storypicker'
-    # layout: 'vbox'
+    layout:
+      # type: 'vbox'
+      reserveScrollbar: true
+    autoScroll: true
     items: [{
       xtype: 'container'
       id: 'iterationfilter'
       cls: 'header'
-    #   xtype:'rallyiterationcombobox'
-    #   itemId:'iterationfilter'
-    #   width: 300
-    #   listeners:
-    #     change: (combo) ->
-    #       @_onIterationFilterChange combo.getRawValue
-    #       return
-    #     ready: (combo) ->
-    #       @_onIterationFilterChange combo.getRawValue
-    #       return
-    #     scope: @
     }]
   }, {
     id: 'storyview'
@@ -57,7 +49,7 @@ Ext.define 'RallyPokerApp', {
           return
     }
     @IterationFilter = Ext.create 'Ext.form.ComboBox', {
-      fieldLabel: 'Choose an Iteration'
+      fieldLabel: 'Iteration'
       store: @IterationsStore
       queryMode: 'local'
       displayField: 'Name'
@@ -76,7 +68,7 @@ Ext.define 'RallyPokerApp', {
 
     @StoriesStore = Ext.create 'Rally.data.WsapiDataStore', {
       model: 'User Story'
-      fetch: ['Name']
+      fetch: ['ObjectID', 'FormattedID', 'Name']
       sorters: [{
         property: 'Name'
         direction: 'DESC'
@@ -90,31 +82,65 @@ Ext.define 'RallyPokerApp', {
       store: @StoriesStore
       tpl: new Ext.XTemplate(
         '<tpl for=".">',
-          '<div style="margin-bottom: 10px;" class="storylistitem">',
-            '<span>{Name}</span>',
+          '<div style="padding: .5em 0;" class="storylistitem" data-id="{ObjectID}">',
+            '<span class="storylistitem-id">{FormattedID}: {Name}</span>',
           '</div>',
         '</tpl>'
       )
       itemSelector: 'div.storylistitem'
       emptyText: 'No stories available'
+      listeners:
+        click:
+          element: 'el'
+          fn: (e, t) =>
+            @CurrentStory.load {
+              filters: [{
+                property: 'ObjectID'
+                value: Ext.get(t).findParent('.storylistitem').getAttribute 'data-id'
+              }]
+            }
+            # debugger
+            @getLayout().setActiveItem 'storyview'
+            return
     }
     @down('#storypicker').add @StoryList
 
-    # @CurrentStory = Ext.create 'Rally.data.WsapiDataStore', {
-    #   model: 'User Story'
-    #   # limit: 1,
-    #   fetch: ['FormattedID', 'Name', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
-    #   filters: [{
-    #     property: 'ObjectID'
-    #     value: 11812083096
-    #   }]
+    @CurrentStory = Ext.create 'Rally.data.WsapiDataStore', {
+      model: 'User Story'
+      # limit: 1,
+      fetch: ['ObjectID', 'FormattedID', 'Name', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
     #   autoLoad: true
     #   listeners:
     #     load: (store, result, success) ->
     #       console.log result[0].data.FormattedID + ': ' + result[0].data.Name
     #       debugger
     #       return
-    # }
-    # @down('#storieslist').reconfigure @CurrentStory
+    }
+    @StoryPage = Ext.create 'Ext.view.View', {
+      store: @CurrentStory
+      tpl: new Ext.XTemplate(
+        '<tpl for=".">',
+          '<div class="storydetail" data-id="{ObjectID}">',
+            '<h2 class="storydetail-id">{FormattedID}: {Name}</h2>',
+            '<span class="storydetail-date">{LastUpdateDate}</span>',
+            '<div class="storydetail-description">',
+              '<h3>Description<h3>{Description}',
+            '</div>',
+            '<div class="storydetail-attachments">',
+              '<h3>Attachments<h3>{Attachments}',
+            '</div>',
+            '<div class="storydetail-notes">',
+              '<h3>Notes<h3>{Notes}',
+            '</div>',
+            '<div class="storydetail-discussion">',
+              '<h3>Discussion<h3>{Discussion}',
+            '</div>',
+          '</div>',
+        '</tpl>'
+      )
+      itemSelector: 'div.storydetail'
+    }
+    @down('#storyview').add @StoryPage
+
     return
 }

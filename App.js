@@ -6,6 +6,10 @@ Ext.define('RallyPokerApp', {
   items: [
     {
       id: 'storypicker',
+      layout: {
+        reserveScrollbar: true
+      },
+      autoScroll: true,
       items: [
         {
           xtype: 'container',
@@ -39,7 +43,7 @@ Ext.define('RallyPokerApp', {
       }
     });
     this.IterationFilter = Ext.create('Ext.form.ComboBox', {
-      fieldLabel: 'Choose an Iteration',
+      fieldLabel: 'Iteration',
       store: this.IterationsStore,
       queryMode: 'local',
       displayField: 'Name',
@@ -60,7 +64,7 @@ Ext.define('RallyPokerApp', {
     this.down('#iterationfilter').add(this.IterationFilter);
     this.StoriesStore = Ext.create('Rally.data.WsapiDataStore', {
       model: 'User Story',
-      fetch: ['Name'],
+      fetch: ['ObjectID', 'FormattedID', 'Name'],
       sorters: [
         {
           property: 'Name',
@@ -70,10 +74,36 @@ Ext.define('RallyPokerApp', {
     });
     this.StoryList = Ext.create('Ext.view.View', {
       store: this.StoriesStore,
-      tpl: new Ext.XTemplate('<tpl for=".">', '<div style="margin-bottom: 10px;" class="storylistitem">', '<span>{Name}</span>', '</div>', '</tpl>'),
+      tpl: new Ext.XTemplate('<tpl for=".">', '<div style="padding: .5em 0;" class="storylistitem" data-id="{ObjectID}">', '<span class="storylistitem-id">{FormattedID}: {Name}</span>', '</div>', '</tpl>'),
       itemSelector: 'div.storylistitem',
-      emptyText: 'No stories available'
+      emptyText: 'No stories available',
+      listeners: {
+        click: {
+          element: 'el',
+          fn: function(e, t) {
+            _this.CurrentStory.load({
+              filters: [
+                {
+                  property: 'ObjectID',
+                  value: Ext.get(t).findParent('.storylistitem').getAttribute('data-id')
+                }
+              ]
+            });
+            _this.getLayout().setActiveItem('storyview');
+          }
+        }
+      }
     });
     this.down('#storypicker').add(this.StoryList);
+    this.CurrentStory = Ext.create('Rally.data.WsapiDataStore', {
+      model: 'User Story',
+      fetch: ['ObjectID', 'FormattedID', 'Name', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
+    });
+    this.StoryPage = Ext.create('Ext.view.View', {
+      store: this.CurrentStory,
+      tpl: new Ext.XTemplate('<tpl for=".">', '<div class="storydetail" data-id="{ObjectID}">', '<h2 class="storydetail-id">{FormattedID}: {Name}</h2>', '<span class="storydetail-date">{LastUpdateDate}</span>', '<div class="storydetail-description">', '<h3>Description<h3>{Description}', '</div>', '<div class="storydetail-attachments">', '<h3>Attachments<h3>{Attachments}', '</div>', '<div class="storydetail-notes">', '<h3>Notes<h3>{Notes}', '</div>', '<div class="storydetail-discussion">', '<h3>Discussion<h3>{Discussion}', '</div>', '</div>', '</tpl>'),
+      itemSelector: 'div.storydetail'
+    });
+    this.down('#storyview').add(this.StoryPage);
   }
 });
