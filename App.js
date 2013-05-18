@@ -2,23 +2,78 @@
 Ext.define('RallyPokerApp', {
   extend: 'Rally.app.App',
   componentCls: 'app',
-  launch: function() {
-    this._CurrStory = Ext.create('Rally.data.WsapiDataStore', {
-      model: 'User Story',
-      fetch: true,
-      filters: [
+  layout: 'card',
+  items: [
+    {
+      id: 'storypicker',
+      items: [
         {
-          property: 'ObjectID',
-          value: 11812083096
+          xtype: 'container',
+          id: 'iterationfilter',
+          cls: 'header'
+        }
+      ]
+    }, {
+      id: 'storyview'
+    }
+  ],
+  launch: function() {
+    var _this = this;
+
+    this.IterationsStore = Ext.create('Rally.data.WsapiDataStore', {
+      model: 'Iteration',
+      fetch: ['Name'],
+      sorters: [
+        {
+          property: 'Name',
+          direction: 'DESC'
         }
       ],
       autoLoad: true,
       listeners: {
         load: function(store, result, success) {
-          console.log(result[0].data.FormattedID + ': ' + result[0].data.Name);
-          debugger;
+          if (success) {
+            _this.IterationFilter.setValue('Deprecated');
+          }
         }
       }
     });
+    this.IterationFilter = Ext.create('Ext.form.ComboBox', {
+      fieldLabel: 'Choose an Iteration',
+      store: this.IterationsStore,
+      queryMode: 'local',
+      displayField: 'Name',
+      valueField: 'Name',
+      listeners: {
+        change: function(field, newValue, oldValue, options) {
+          _this.StoriesStore.load({
+            filters: [
+              {
+                property: 'Iteration.Name',
+                value: newValue
+              }
+            ]
+          });
+        }
+      }
+    });
+    this.down('#iterationfilter').add(this.IterationFilter);
+    this.StoriesStore = Ext.create('Rally.data.WsapiDataStore', {
+      model: 'User Story',
+      fetch: ['Name'],
+      sorters: [
+        {
+          property: 'Name',
+          direction: 'DESC'
+        }
+      ]
+    });
+    this.StoryList = Ext.create('Ext.view.View', {
+      store: this.StoriesStore,
+      tpl: new Ext.XTemplate('<tpl for=".">', '<div style="margin-bottom: 10px;" class="storylistitem">', '<span>{Name}</span>', '</div>', '</tpl>'),
+      itemSelector: 'div.storylistitem',
+      emptyText: 'No stories available'
+    });
+    this.down('#storypicker').add(this.StoryList);
   }
 });
