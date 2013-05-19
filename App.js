@@ -10,15 +10,35 @@ Ext.define('RallyPokerApp', {
         reserveScrollbar: true
       },
       autoScroll: true,
-      items: [
+      dockedItems: [
         {
-          xtype: 'container',
-          id: 'iterationfilter',
-          cls: 'header'
+          items: [
+            {
+              id: 'iterationfilter'
+            }
+          ]
         }
       ]
     }, {
-      id: 'storyview'
+      id: 'storyview',
+      layout: {
+        reserveScrollbar: true
+      },
+      autoScroll: true,
+      dockedItems: [
+        {
+          items: [
+            {
+              id: 'storyheader',
+              items: [
+                {
+                  id: 'storytitle'
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   launch: function() {
@@ -81,6 +101,11 @@ Ext.define('RallyPokerApp', {
         click: {
           element: 'el',
           fn: function(e, t) {
+            var storyListItem, storyListItemId;
+
+            storyListItem = Ext.get(t).findParent('.storylistitem');
+            storyListItemId = Ext.get(storyListItem).child('.storylistitem-id').getHTML();
+            Ext.get('storytitle').update(storyListItemId);
             _this.CurrentStory.load({
               filters: [
                 {
@@ -95,6 +120,13 @@ Ext.define('RallyPokerApp', {
       }
     });
     this.down('#storypicker').add(this.StoryList);
+    this.BackButton = Ext.create('Ext.Button', {
+      text: 'Back',
+      handler: function() {
+        _this.getLayout().setActiveItem('storypicker');
+      }
+    });
+    this.down('#storyheader').add(this.BackButton);
     this.CurrentStory = Ext.create('Rally.data.WsapiDataStore', {
       model: 'User Story',
       fetch: ['ObjectID', 'FormattedID', 'Name', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
