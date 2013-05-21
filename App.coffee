@@ -11,8 +11,8 @@ Ext.define 'RallyPokerApp', {
     autoScroll: true
     dockedItems: [{
       items: [{
-        # xtype: 'container'
         id: 'iterationfilter'
+        xtype: 'toolbar'
         # cls: 'header'
       }]
     }]
@@ -22,28 +22,20 @@ Ext.define 'RallyPokerApp', {
       reserveScrollbar: true
     autoScroll: true
     dockedItems: [{
-    #   xtype: 'container'
-    #   layout:
-    #     type: 'hbox'
-    #     align: 'stretch'
-    #     pack: 'end'
-    #   height: 100
       items: [{
-    #     xtype: 'component'
-    #     width: 200,
         id: 'storyheader'
+        xtype: 'toolbar'
         # cls: 'header'
-    #     tpl: '<h2>{FormattedID}: {Name}</h2>'
+        # tpl: '<h2>{FormattedID}: {Name}</h2>'
         items: [{
-        #   xtype: 'button'
-        #   text: 'Back',
-        #   # scale: 'small'
-        #   # ui: 'back'
-        #   handler: () =>
-        #     @getLayout().setActiveItem 'storypicker'
-        #     return
-        # }, {
+          id: 'storyback'
+          xtype: 'button'
+          html: 'Back',
+          # scale: 'small'
+          # ui: 'back'
+        }, {
           id: 'storytitle'
+          xtype: 'component'
         }]
       }]
     }]
@@ -110,9 +102,9 @@ Ext.define 'RallyPokerApp', {
         click:
           element: 'el'
           fn: (e, t) =>
-            storyListItem = Ext.get(t).findParent '.storylistitem'
-            storyListItemId = Ext.get(storyListItem).child('.storylistitem-id').getHTML()
-            Ext.get('storytitle').update storyListItemId
+            StoryListItem = Ext.get(t).findParent '.storylistitem'
+            storyListItemName = Ext.get(StoryListItem).child('.storylistitem-id').getHTML()
+            Ext.get('storytitle').update storyListItemName
             @CurrentStory.load {
               filters: [{
                 property: 'ObjectID'
@@ -124,20 +116,15 @@ Ext.define 'RallyPokerApp', {
     }
     @down('#storypicker').add @StoryList
 
-    @BackButton = Ext.create 'Ext.Button', {
-      text: 'Back',
-      # scale: 'small'
-      # ui: 'back'
-      handler: () =>
-        @getLayout().setActiveItem 'storypicker'
-        return
-    }
-    @down('#storyheader').add @BackButton
+    # Ext.getCmp('storytitle').update 'Back'
+    Ext.getCmp('storyback').on 'click', () =>
+      @getLayout().setActiveItem 'storypicker'
+      return
 
     @CurrentStory = Ext.create 'Rally.data.WsapiDataStore', {
       model: 'User Story'
       # limit: 1,
-      fetch: ['ObjectID', 'FormattedID', 'Name', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
+      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
     #   autoLoad: true
     #   listeners:
     #     load: (store, result, success) ->
@@ -150,10 +137,9 @@ Ext.define 'RallyPokerApp', {
       tpl: new Ext.XTemplate(
         '<tpl for=".">',
           '<div class="storydetail" data-id="{ObjectID}">',
-            '<h2 class="storydetail-id">{FormattedID}: {Name}</h2>',
             '<span class="storydetail-date">{LastUpdateDate}</span>',
             '<div class="storydetail-description">',
-              '<h3>Description<h3>{Description}',
+              '{Description}',
             '</div>',
             '<div class="storydetail-attachments">',
               '<h3>Attachments<h3>{Attachments}',

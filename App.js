@@ -14,7 +14,8 @@ Ext.define('RallyPokerApp', {
         {
           items: [
             {
-              id: 'iterationfilter'
+              id: 'iterationfilter',
+              xtype: 'toolbar'
             }
           ]
         }
@@ -30,9 +31,15 @@ Ext.define('RallyPokerApp', {
           items: [
             {
               id: 'storyheader',
+              xtype: 'toolbar',
               items: [
                 {
-                  id: 'storytitle'
+                  id: 'storyback',
+                  xtype: 'button',
+                  html: 'Back'
+                }, {
+                  id: 'storytitle',
+                  xtype: 'component'
                 }
               ]
             }
@@ -101,11 +108,11 @@ Ext.define('RallyPokerApp', {
         click: {
           element: 'el',
           fn: function(e, t) {
-            var storyListItem, storyListItemId;
+            var StoryListItem, storyListItemName;
 
-            storyListItem = Ext.get(t).findParent('.storylistitem');
-            storyListItemId = Ext.get(storyListItem).child('.storylistitem-id').getHTML();
-            Ext.get('storytitle').update(storyListItemId);
+            StoryListItem = Ext.get(t).findParent('.storylistitem');
+            storyListItemName = Ext.get(StoryListItem).child('.storylistitem-id').getHTML();
+            Ext.get('storytitle').update(storyListItemName);
             _this.CurrentStory.load({
               filters: [
                 {
@@ -120,20 +127,16 @@ Ext.define('RallyPokerApp', {
       }
     });
     this.down('#storypicker').add(this.StoryList);
-    this.BackButton = Ext.create('Ext.Button', {
-      text: 'Back',
-      handler: function() {
-        _this.getLayout().setActiveItem('storypicker');
-      }
+    Ext.getCmp('storyback').on('click', function() {
+      _this.getLayout().setActiveItem('storypicker');
     });
-    this.down('#storyheader').add(this.BackButton);
     this.CurrentStory = Ext.create('Rally.data.WsapiDataStore', {
       model: 'User Story',
-      fetch: ['ObjectID', 'FormattedID', 'Name', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
+      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
     });
     this.StoryPage = Ext.create('Ext.view.View', {
       store: this.CurrentStory,
-      tpl: new Ext.XTemplate('<tpl for=".">', '<div class="storydetail" data-id="{ObjectID}">', '<h2 class="storydetail-id">{FormattedID}: {Name}</h2>', '<span class="storydetail-date">{LastUpdateDate}</span>', '<div class="storydetail-description">', '<h3>Description<h3>{Description}', '</div>', '<div class="storydetail-attachments">', '<h3>Attachments<h3>{Attachments}', '</div>', '<div class="storydetail-notes">', '<h3>Notes<h3>{Notes}', '</div>', '<div class="storydetail-discussion">', '<h3>Discussion<h3>{Discussion}', '</div>', '</div>', '</tpl>'),
+      tpl: new Ext.XTemplate('<tpl for=".">', '<div class="storydetail" data-id="{ObjectID}">', '<span class="storydetail-date">{LastUpdateDate}</span>', '<div class="storydetail-description">', '{Description}', '</div>', '<div class="storydetail-attachments">', '<h3>Attachments<h3>{Attachments}', '</div>', '<div class="storydetail-notes">', '<h3>Notes<h3>{Notes}', '</div>', '<div class="storydetail-discussion">', '<h3>Discussion<h3>{Discussion}', '</div>', '</div>', '</tpl>'),
       itemSelector: 'div.storydetail'
     });
     this.down('#storyview').add(this.StoryPage);
