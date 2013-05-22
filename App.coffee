@@ -126,11 +126,26 @@ Ext.define 'RallyPokerApp', {
       # limit: 1,
       fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
     #   autoLoad: true
-    #   listeners:
-    #     load: (store, result, success) ->
-    #       console.log result[0].data.FormattedID + ': ' + result[0].data.Name
-    #       debugger
-    #       return
+      listeners:
+        load: (store, result, success) ->
+          store.each (result) ->
+            date = result.data.LastUpdateDate
+            # JavaScript Pretty Date
+            # Copyright (c) 2011 John Resig (ejohn.org)
+            # Licensed under the MIT and GPL licenses.
+
+            # Takes an ISO time and returns a string representing how
+            # long ago the date represents.
+            diff = (((new Date()).getTime() - date.getTime()) / 1000)
+            day_diff = Math.floor(diff / 86400)
+
+            if (isNaN(day_diff) || day_diff < 0 || day_diff >= 31)
+              return
+
+            timeago = day_diff == 0 && (diff < 60 && "just now" || diff < 120 && "1 minute ago" || diff < 3600 && Math.floor(diff / 60) + " minutes ago" || diff < 7200 && "1 hour ago" || diff < 86400 && Math.floor(diff / 3600) + " hours ago") || day_diff == 1 && "Yesterday" || day_diff < 7 && day_diff + " days ago" || day_diff < 31 && Math.ceil( day_diff / 7 ) + " weeks ago"
+            result.set 'LastUpdateDate', timeago
+            console.log timeago
+            return
     }
     @StoryPage = Ext.create 'Ext.view.View', {
       store: @CurrentStory
