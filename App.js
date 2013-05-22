@@ -136,7 +136,7 @@ Ext.define('RallyPokerApp', {
     });
     this.StoryPage = Ext.create('Ext.view.View', {
       store: this.CurrentStory,
-      tpl: new Ext.XTemplate('<tpl for=".">', '<div class="storydetail" data-id="{ObjectID}">', '<span class="storydetail-date">{LastUpdateDate}</span>', '<div class="storydetail-description">', '{Description}', '</div>', '<div class="storydetail-attachments">', '<h3>Attachments<h3>{Attachments}', '</div>', '<div class="storydetail-notes">', '<h3>Notes<h3>{Notes}', '</div>', '<div class="storydetail-discussion">', '<h3>Discussion<h3>{Discussion}', '</div>', '</div>', '</tpl>'),
+      tpl: new Ext.XTemplate('<tpl for=".">', '<div class="storydetail" data-id="{ObjectID}">', '<small class="storydetail-date">Last Updated: {LastUpdateDate}</small>', '<div class="storydetail-description">', '{Description}', '</div>', '<div class="storydetail-attachments">', '<h3>Attachments<h3>{Attachments}', '</div>', '<div class="storydetail-notes">', '<h3>Notes<h3>{Notes}', '</div>', '<div class="storydetail-discussion">', '<h3>Discussion<h3>{Discussion}', '</div>', '</div>', '</tpl>'),
       itemSelector: 'div.storydetail'
     });
     this.down('#storyview').add(this.StoryPage);

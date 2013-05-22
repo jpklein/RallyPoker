@@ -137,7 +137,7 @@ Ext.define 'RallyPokerApp', {
       tpl: new Ext.XTemplate(
         '<tpl for=".">',
           '<div class="storydetail" data-id="{ObjectID}">',
-            '<span class="storydetail-date">{LastUpdateDate}</span>',
+            '<small class="storydetail-date">Last Updated: {LastUpdateDate}</small>',
             '<div class="storydetail-description">',
               '{Description}',
             '</div>',
