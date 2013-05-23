@@ -123,17 +123,16 @@ Ext.define 'RallyPokerApp', {
 
     @CurrentStory = Ext.create 'Rally.data.WsapiDataStore', {
       model: 'userstory'
-      # limit: 1,
+      limit: 1,
       fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
-    #   autoLoad: true
       listeners:
         load: (store, result, success) =>
-          # console.log result[0].data.FormattedID + ': ' + result[0].data.Name
           if result[0].data.Discussion.length
             @DiscussionsStore.load {
               filters: [{
-                property: 'ObjectID'
-                value: result[0].data.Discussion[0].ObjectID
+                # You gotta love it when a random guess comes together!
+                property: 'Artifact.ObjectID'
+                value: result[0].data.ObjectID
               }]
             }
           return

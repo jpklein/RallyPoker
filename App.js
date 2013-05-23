@@ -132,6 +132,7 @@ Ext.define('RallyPokerApp', {
     });
     this.CurrentStory = Ext.create('Rally.data.WsapiDataStore', {
       model: 'userstory',
+      limit: 1,
       fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion'],
       listeners: {
         load: function(store, result, success) {
@@ -139,8 +140,8 @@ Ext.define('RallyPokerApp', {
             _this.DiscussionsStore.load({
               filters: [
                 {
-                  property: 'ObjectID',
-                  value: result[0].data.Discussion[0].ObjectID
+                  property: 'Artifact.ObjectID',
+                  value: result[0].data.ObjectID
                 }
               ]
             });
