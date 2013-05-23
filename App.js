@@ -72,8 +72,42 @@ Ext.define('RallyPokerApp', {
           d = a.charCodeAt(c++);
         ) {
           b = b * 62 + d - [, 48, 29, 87][d >> 5];
+        };        return b;
+      }
+    };
+  })(),
+  TurnMessage: (function() {
+    var pkg, sep;
+
+    sep = ["/", "&"];
+    pkg = "[[" + sep[0] + "]]";
+    return {
+      compile: function(M) {
+        var ln, s;
+
+        s = "";
+        ln = M.unshift(new Date().getTime());
+        while (i < ln) {
+          s += (sep[i] || sep[1]) + (arguments[1] ? arguments[1](M[i]) : M[i]);
+          i++;
         }
-        return b;
+        return s;
+      },
+      decompile: function(s) {
+        var M, i, r, _i, _len;
+
+        r = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$");
+        if (!r.test(s)) {
+          return false;
+        }
+        M = s.slice(1).split(sep[1]);
+        if (arguments[1]) {
+          for (_i = 0, _len = M.length; _i < _len; _i++) {
+            i = M[_i];
+            M[i] = arguments[1](M[i]);
+          }
+        }
+        return M;
       }
     };
   })(),

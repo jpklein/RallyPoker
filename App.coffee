@@ -68,6 +68,31 @@ Ext.define 'RallyPokerApp', {
         b
     }
 
+  TurnMessage: do () ->
+    # Unix Timestamp + strings from arguments
+    # ==> encoded message + custom delimiters
+    sep = ["/", "&"]
+    pkg = "[[" + sep[0] + "]]"
+
+    {
+      compile: (M) ->
+        s = ""
+        ln = M.unshift(new Date().getTime())
+        while i < ln
+          # coffeescript I love you, but you're bringing me down...
+          s += (sep[i] || sep[1]) + (if arguments[1] then arguments[1] M[i] else M[i])
+          i++
+        s
+      decompile: (s) ->
+        r = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$")
+        return false if !r.test s
+        M = s.slice(1).split sep[1]
+        if arguments[1]
+          for i in M
+            M[i] = arguments[1] M[i]
+        M
+    }
+
   launch: () ->
     @IterationsStore = Ext.create 'Rally.data.WsapiDataStore', {
       # id: 'iterationsStore'
@@ -206,7 +231,11 @@ Ext.define 'RallyPokerApp', {
       model: 'conversationpost'
       fetch: ['User', 'CreationDate', 'Text']
       # listeners:
-      #   load: (store, result, success) ->
+      #   load: (store, result, success) =>
+      #     # Example message contents: UserID + 4-bit point-selection value
+      #     var message = [this.getContext().getUser().ObjectID, 020];
+      #     var encoded = this.TurnMessage.compile(message, this.Base62.encode);
+      #     var decoded = this.TurnMessage.decompile(encoded, this.Base62.decode);
       #     debugger
       #     return
     }
