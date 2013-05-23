@@ -54,9 +54,9 @@ Ext.define 'RallyPokerApp', {
       encode: (i) ->
         return if i == 0
         s = ''
-        while (i > 0)
+        while i > 0
           s = chars[i % 62] + s
-          i = Math.floor(i/62)
+          i = Math.floor(i / 62)
         s
       decode: (a,b,c,d) ->
         `for (
@@ -68,29 +68,25 @@ Ext.define 'RallyPokerApp', {
         b
     }
 
-  TurnMessage: do () ->
+  PokerMessage: do () ->
     # Unix Timestamp + strings from arguments
     # ==> encoded message + custom delimiters
-    sep = ["/", "&"]
-    pkg = "[[" + sep[0] + "]]"
+    sep = ['/', '&']
+    msg = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$")
+    pkg = '[[' + sep[0] + ']]'
 
     {
       compile: (M) ->
-        s = ""
-        ln = M.unshift(new Date().getTime())
-        while i < ln
-          # coffeescript I love you, but you're bringing me down...
-          s += (sep[i] || sep[1]) + (if arguments[1] then arguments[1] M[i] else M[i])
-          i++
-        s
+        M.unshift new Date().getTime()
+        fn = arguments[1] || (x) -> x
+        M.reduce (p, c, i) -> p + (sep[i] || sep[1]) + fn c
       decompile: (s) ->
-        r = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$")
-        return false if !r.test s
+        return false if !msg.test s
         M = s.slice(1).split sep[1]
         if arguments[1]
-          for i in M
-            M[i] = arguments[1] M[i]
-        M
+          arguments[1] i for i in M by 1
+        else
+          M
     }
 
   launch: () ->
@@ -216,10 +212,7 @@ Ext.define 'RallyPokerApp', {
           prettyDate: (date) ->
             diff = (((new Date()).getTime() - date.getTime()) / 1000)
             day_diff = Math.floor(diff / 86400)
-
-            if (isNaN(day_diff) || day_diff < 0 || day_diff >= 31)
-              return
-
+            return if isNaN(day_diff) || day_diff < 0 || day_diff >= 31
             day_diff == 0 && (diff < 60 && "just now" || diff < 120 && "1 minute ago" || diff < 3600 && Math.floor(diff / 60) + " minutes ago" || diff < 7200 && "1 hour ago" || diff < 86400 && Math.floor(diff / 3600) + " hours ago") || day_diff == 1 && "Yesterday" || day_diff < 7 && day_diff + " days ago" || day_diff < 31 && Math.ceil(day_diff / 7) + " weeks ago"
         }
       )
@@ -230,14 +223,15 @@ Ext.define 'RallyPokerApp', {
     @DiscussionsStore = Ext.create 'Rally.data.WsapiDataStore', {
       model: 'conversationpost'
       fetch: ['User', 'CreationDate', 'Text']
-      # listeners:
-      #   load: (store, result, success) =>
-      #     # Example message contents: UserID + 4-bit point-selection value
-      #     var message = [this.getContext().getUser().ObjectID, 020];
-      #     var encoded = this.TurnMessage.compile(message, this.Base62.encode);
-      #     var decoded = this.TurnMessage.decompile(encoded, this.Base62.decode);
-      #     debugger
-      #     return
+      listeners:
+        load: (store, result, success) =>
+          debugger
+          # Example message contents: UserID + 4-bit point-selection value
+          message = [@getContext().getUser().ObjectID, `020`]
+          encoded = @PokerMessage.compile message, @Base62.encode
+          decoded = @PokerMessage.decompile encoded, @Base62.decode
+
+          return
     }
     @DiscussionThread = Ext.create 'Ext.view.View', {
       store: @DiscussionsStore

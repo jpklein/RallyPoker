@@ -76,38 +76,41 @@ Ext.define('RallyPokerApp', {
       }
     };
   })(),
-  TurnMessage: (function() {
-    var pkg, sep;
+  PokerMessage: (function() {
+    var msg, pkg, sep;
 
-    sep = ["/", "&"];
-    pkg = "[[" + sep[0] + "]]";
+    sep = ['/', '&'];
+    msg = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$");
+    pkg = '[[' + sep[0] + ']]';
     return {
       compile: function(M) {
-        var ln, s;
+        var fn;
 
-        s = "";
-        ln = M.unshift(new Date().getTime());
-        while (i < ln) {
-          s += (sep[i] || sep[1]) + (arguments[1] ? arguments[1](M[i]) : M[i]);
-          i++;
-        }
-        return s;
+        M.unshift(new Date().getTime());
+        fn = arguments[1] || function(x) {
+          return x;
+        };
+        return M.reduce(function(p, c, i) {
+          return p + (sep[i] || sep[1]) + fn(c);
+        });
       },
       decompile: function(s) {
-        var M, i, r, _i, _len;
+        var M, i, _i, _len, _results;
 
-        r = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$");
-        if (!r.test(s)) {
+        if (!msg.test(s)) {
           return false;
         }
         M = s.slice(1).split(sep[1]);
         if (arguments[1]) {
-          for (_i = 0, _len = M.length; _i < _len; _i++) {
+          _results = [];
+          for (_i = 0, _len = M.length; _i < _len; _i += 1) {
             i = M[_i];
-            M[i] = arguments[1](M[i]);
+            _results.push(arguments[1](i));
           }
+          return _results;
+        } else {
+          return M;
         }
-        return M;
       }
     };
   })(),
@@ -231,7 +234,17 @@ Ext.define('RallyPokerApp', {
     this.down('#storyview').add(this.StoryPage);
     this.DiscussionsStore = Ext.create('Rally.data.WsapiDataStore', {
       model: 'conversationpost',
-      fetch: ['User', 'CreationDate', 'Text']
+      fetch: ['User', 'CreationDate', 'Text'],
+      listeners: {
+        load: function(store, result, success) {
+          debugger;
+          var decoded, encoded, message;
+
+          message = [_this.getContext().getUser().ObjectID, 020];
+          encoded = _this.PokerMessage.compile(message, _this.Base62.encode);
+          decoded = _this.PokerMessage.decompile(encoded, _this.Base62.decode);
+        }
+      }
     });
     this.DiscussionThread = Ext.create('Ext.view.View', {
       store: this.DiscussionsStore,
