@@ -131,26 +131,12 @@ Ext.define('RallyPokerApp', {
       _this.getLayout().setActiveItem('storypicker');
     });
     this.CurrentStory = Ext.create('Rally.data.WsapiDataStore', {
-      model: 'userstory',
-      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion'],
-      listeners: {
-        load: function(store, result, success) {
-          if (result[0].data.Discussion.length) {
-            _this.DiscussionsStore.load({
-              filters: [
-                {
-                  property: 'ObjectID',
-                  value: result[0].data.Discussion[0].ObjectID
-                }
-              ]
-            });
-          }
-        }
-      }
+      model: 'User Story',
+      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
     });
     this.StoryPage = Ext.create('Ext.view.View', {
       store: this.CurrentStory,
-      tpl: new Ext.XTemplate('<tpl for=".">', '<div class="storydetail" data-id="{ObjectID}">', '<small class="storydetail-date">Last Updated: {[this.prettyDate(values.LastUpdateDate)]}</small>', '<div class="storydetail-description">', '{Description}', '</div>', '<div class="storydetail-attachments">', '<h3>Attachments<h3>{Attachments}', '</div>', '<div class="storydetail-notes">', '<h3>Notes<h3>{Notes}', '</div>', '</div>', '</tpl>', {
+      tpl: new Ext.XTemplate('<tpl for=".">', '<div class="storydetail" data-id="{ObjectID}">', '<span class="storydetail-date">Last Updated: {[this.prettyDate(values.LastUpdateDate)]}</span>', '<div class="storydetail-description">', '{Description}', '</div>', '<div class="storydetail-attachments">', '<h3>Attachments<h3>{Attachments}', '</div>', '<div class="storydetail-notes">', '<h3>Notes<h3>{Notes}', '</div>', '<div class="storydetail-discussion">', '<h3>Discussion<h3>{Discussion}', '</div>', '</div>', '</tpl>', {
         prettyDate: function(date) {
           var day_diff, diff;
 
@@ -165,15 +151,5 @@ Ext.define('RallyPokerApp', {
       itemSelector: 'div.storydetail'
     });
     this.down('#storyview').add(this.StoryPage);
-    this.DiscussionsStore = Ext.create('Rally.data.WsapiDataStore', {
-      model: 'conversationpost',
-      fetch: ['User', 'CreationDate', 'Text']
-    });
-    this.DiscussionThread = Ext.create('Ext.view.View', {
-      store: this.DiscussionsStore,
-      tpl: new Ext.XTemplate('<div class="discussionthread">', '<h3>Discussion</h3>', '<tpl for=".">', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '</div>'),
-      itemSelector: 'div.discussionitem'
-    });
-    this.down('#storyview').add(this.DiscussionThread);
   }
 });
