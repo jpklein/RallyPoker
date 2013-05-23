@@ -132,28 +132,22 @@ Ext.define('RallyPokerApp', {
     });
     this.CurrentStory = Ext.create('Rally.data.WsapiDataStore', {
       model: 'User Story',
-      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion'],
-      listeners: {
-        load: function(store, result, success) {
-          return store.each(function(result) {
-            var date, day_diff, diff, timeago;
-
-            date = result.data.LastUpdateDate;
-            diff = ((new Date()).getTime() - date.getTime()) / 1000;
-            day_diff = Math.floor(diff / 86400);
-            if (isNaN(day_diff) || day_diff < 0 || day_diff >= 31) {
-              return;
-            }
-            timeago = day_diff === 0 && (diff < 60 && "just now" || diff < 120 && "1 minute ago" || diff < 3600 && Math.floor(diff / 60) + " minutes ago" || diff < 7200 && "1 hour ago" || diff < 86400 && Math.floor(diff / 3600) + " hours ago") || day_diff === 1 && "Yesterday" || day_diff < 7 && day_diff + " days ago" || day_diff < 31 && Math.ceil(day_diff / 7) + " weeks ago";
-            result.set('LastUpdateDate', timeago);
-            console.log(timeago);
-          });
-        }
-      }
+      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
     });
     this.StoryPage = Ext.create('Ext.view.View', {
       store: this.CurrentStory,
-      tpl: new Ext.XTemplate('<tpl for=".">', '<div class="storydetail" data-id="{ObjectID}">', '<span class="storydetail-date">{LastUpdateDate}</span>', '<div class="storydetail-description">', '{Description}', '</div>', '<div class="storydetail-attachments">', '<h3>Attachments<h3>{Attachments}', '</div>', '<div class="storydetail-notes">', '<h3>Notes<h3>{Notes}', '</div>', '<div class="storydetail-discussion">', '<h3>Discussion<h3>{Discussion}', '</div>', '</div>', '</tpl>'),
+      tpl: new Ext.XTemplate('<tpl for=".">', '<div class="storydetail" data-id="{ObjectID}">', '<span class="storydetail-date">Last Updated: {[this.prettyDate(values.LastUpdateDate)]}</span>', '<div class="storydetail-description">', '{Description}', '</div>', '<div class="storydetail-attachments">', '<h3>Attachments<h3>{Attachments}', '</div>', '<div class="storydetail-notes">', '<h3>Notes<h3>{Notes}', '</div>', '<div class="storydetail-discussion">', '<h3>Discussion<h3>{Discussion}', '</div>', '</div>', '</tpl>', {
+        prettyDate: function(date) {
+          var day_diff, diff;
+
+          diff = ((new Date()).getTime() - date.getTime()) / 1000;
+          day_diff = Math.floor(diff / 86400);
+          if (isNaN(day_diff) || day_diff < 0 || day_diff >= 31) {
+            return;
+          }
+          return day_diff === 0 && (diff < 60 && "just now" || diff < 120 && "1 minute ago" || diff < 3600 && Math.floor(diff / 60) + " minutes ago" || diff < 7200 && "1 hour ago" || diff < 86400 && Math.floor(diff / 3600) + " hours ago") || day_diff === 1 && "Yesterday" || day_diff < 7 && day_diff + " days ago" || day_diff < 31 && Math.ceil(day_diff / 7) + " weeks ago";
+        }
+      }),
       itemSelector: 'div.storydetail'
     });
     this.down('#storyview').add(this.StoryPage);
