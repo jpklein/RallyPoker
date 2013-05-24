@@ -82,7 +82,7 @@ Ext.define('RallyPokerApp', {
     sep = ['/', '&'];
     msg = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$");
     env = ['[[', ']]'];
-    pkg = new RegExp("\\[\\[" + sep[0] + "(.+)\\]\\]");
+    pkg = new RegExp("\\[\\[(" + sep[0] + ".+)\\]\\]");
     return {
       compile: function(M) {
         var fn, s;
@@ -100,28 +100,28 @@ Ext.define('RallyPokerApp', {
         var a;
 
         a = s.match(pkg);
-        if (a.length) {
-          return this.decompile(a.pop());
+        if (a == null) {
+          return false;
         } else {
-          return a;
+          return a.pop();
         }
       },
-      decompile: function(s) {
+      decode: function(s) {
         var M, i, _i, _len, _results;
 
         if (!msg.test(s)) {
           return false;
         }
         M = s.slice(1).split(sep[1]);
-        if (arguments[1]) {
+        if (arguments[1] == null) {
+          return M;
+        } else {
           _results = [];
           for (_i = 0, _len = M.length; _i < _len; _i += 1) {
             i = M[_i];
             _results.push(arguments[1](i));
           }
           return _results;
-        } else {
-          return M;
         }
       }
     };
@@ -249,10 +249,15 @@ Ext.define('RallyPokerApp', {
       type: 'string',
       convert: function(v, rec) {
         debugger;
-        var message;
+        var message, text;
 
         message = [new Date().getTime(), _this.getContext().getUser().ObjectID, 020];
-        return rec.get('Text') + "<br/><p>" + _this.PokerMessage.compile(message, _this.Base62.encode) + "</p>";
+        text = rec.get('Text');
+        if (message = _this.PokerMessage.extract(text)) {
+          return (_this.PokerMessage.decode(message, _this.Base62.decode)).pop();
+        } else {
+          return false;
+        }
       }
     });
     Rally.data.ModelFactory.getModel({

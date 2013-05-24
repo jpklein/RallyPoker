@@ -73,7 +73,7 @@ Ext.define 'RallyPokerApp', {
     sep = ['/', '&']
     msg = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$")
     env = ['[[', ']]']
-    pkg = new RegExp("\\[\\[" + sep[0] + "(.+)\\]\\]")
+    pkg = new RegExp("\\[\\[(" + sep[0] + ".+)\\]\\]")
 
     {
       compile: (M) ->
@@ -83,14 +83,11 @@ Ext.define 'RallyPokerApp', {
         env[0] + s + env[1]
       extract: (s) ->
         a = s.match pkg
-        if a.length then @decompile a.pop() else a
-      decompile: (s) ->
-        return false if !msg.test s
+        if not a? then false else a.pop()
+      decode: (s) ->
+        return false if not msg.test s
         M = s.slice(1).split sep[1]
-        if arguments[1]
-          arguments[1] i for i in M by 1
-        else
-          M
+        if not arguments[1]? then M else arguments[1] i for i in M by 1
     }
 
   launch: () ->
@@ -231,10 +228,12 @@ Ext.define 'RallyPokerApp', {
         debugger
         # Example message contents: UserID + 4-bit point-selection value
         message = [new Date().getTime(), @getContext().getUser().ObjectID, `020`]
-        rec.get('Text') + "<br/><p>" + @PokerMessage.compile(message, @Base62.encode) + "</p>"
+        text = rec.get('Text') #+ "<br/><p>" + @PokerMessage.compile(message, @Base62.encode) + "</p>"
 
-        # decoded = @PokerMessage.decompile encoded, @Base62.decode
-        #result = @PokerMessage.extractFrom message
+        if message = @PokerMessage.extract text
+          (@PokerMessage.decode message, @Base62.decode).pop()
+        else
+          false
     }
     Rally.data.ModelFactory.getModel {
       type: 'conversationpost'
