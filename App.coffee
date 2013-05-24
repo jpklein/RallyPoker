@@ -220,17 +220,31 @@ Ext.define 'RallyPokerApp', {
     }
     @down('#storyview').add @StoryPage
 
+    Rally.data.ModelFactory.getModel {
+      type: 'conversationpost'
+      success: (Model) ->
+        Model.prototype.fields.items.push new Ext.data.Field {
+          name: 'Message'
+          type: 'string'
+          convert: (v, rec) ->
+            # debugger
+            rec.get('Text')
+        }
+        Model.setFields Model.prototype.fields.items
+        return
+    }
     @DiscussionsStore = Ext.create 'Rally.data.WsapiDataStore', {
       model: 'conversationpost'
-      fetch: ['User', 'CreationDate', 'Text']
+      fetch: ['User', 'CreationDate', 'Text', 'Message']
       listeners:
         load: (store, result, success) =>
+          console.log store.model.prototype.fields.items
+          console.log result[0].data
           debugger
           # Example message contents: UserID + 4-bit point-selection value
           message = [@getContext().getUser().ObjectID, `020`]
           encoded = @PokerMessage.compile message, @Base62.encode
           decoded = @PokerMessage.decompile encoded, @Base62.decode
-
           return
     }
     @DiscussionThread = Ext.create 'Ext.view.View', {

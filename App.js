@@ -232,14 +232,29 @@ Ext.define('RallyPokerApp', {
       itemSelector: 'div.storydetail'
     });
     this.down('#storyview').add(this.StoryPage);
+    Rally.data.ModelFactory.getModel({
+      type: 'conversationpost',
+      success: function(Model) {
+        Model.prototype.fields.items.push(new Ext.data.Field({
+          name: 'Message',
+          type: 'string',
+          convert: function(v, rec) {
+            return rec.get('Text');
+          }
+        }));
+        Model.setFields(Model.prototype.fields.items);
+      }
+    });
     this.DiscussionsStore = Ext.create('Rally.data.WsapiDataStore', {
       model: 'conversationpost',
-      fetch: ['User', 'CreationDate', 'Text'],
+      fetch: ['User', 'CreationDate', 'Text', 'Message'],
       listeners: {
         load: function(store, result, success) {
-          debugger;
           var decoded, encoded, message;
 
+          console.log(store.model.prototype.fields.items);
+          console.log(result[0].data);
+          debugger;
           message = [_this.getContext().getUser().ObjectID, 020];
           encoded = _this.PokerMessage.compile(message, _this.Base62.encode);
           decoded = _this.PokerMessage.decompile(encoded, _this.Base62.decode);
