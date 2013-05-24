@@ -69,17 +69,21 @@ Ext.define 'RallyPokerApp', {
     }
 
   PokerMessage: do () ->
-    # Unix Timestamp + strings from arguments
-    # ==> encoded message + custom delimiters
+    # [strings] ==> encoded message + custom delimiters
     sep = ['/', '&']
     msg = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$")
-    pkg = '[[' + sep[0] + ']]'
+    env = ['[[', ']]']
+    pkg = new RegExp("\\[\\[" + sep[0] + "(.+)\\]\\]")
 
     {
       compile: (M) ->
-        M.unshift new Date().getTime()
         fn = arguments[1] || (x) -> x
-        M.reduce (p, c, i) -> p + (sep[i] || sep[1]) + fn c
+        M[0] = sep[0] + fn M[0]
+        s = if M.length == 1 then M[0] else M.reduce (p, c, i) -> p + sep[1] + fn c
+        env[0] + s + env[1]
+      extract: (s) ->
+        a = s.match pkg
+        if a.length then @decompile a.pop() else a
       decompile: (s) ->
         return false if !msg.test s
         M = s.slice(1).split sep[1]
@@ -220,16 +224,22 @@ Ext.define 'RallyPokerApp', {
     }
     @down('#storyview').add @StoryPage
 
+    @DiscussionMessageField = new Ext.data.Field {
+      name: 'Message'
+      type: 'string'
+      convert: (v, rec) =>
+        debugger
+        # Example message contents: UserID + 4-bit point-selection value
+        message = [new Date().getTime(), @getContext().getUser().ObjectID, `020`]
+        rec.get('Text') + "<br/><p>" + @PokerMessage.compile(message, @Base62.encode) + "</p>"
+
+        # decoded = @PokerMessage.decompile encoded, @Base62.decode
+        #result = @PokerMessage.extractFrom message
+    }
     Rally.data.ModelFactory.getModel {
       type: 'conversationpost'
-      success: (Model) ->
-        Model.prototype.fields.items.push new Ext.data.Field {
-          name: 'Message'
-          type: 'string'
-          convert: (v, rec) ->
-            # debugger
-            rec.get('Text')
-        }
+      success: (Model) =>
+        Model.prototype.fields.items.push @DiscussionMessageField
         Model.setFields Model.prototype.fields.items
         return
     }
@@ -240,11 +250,7 @@ Ext.define 'RallyPokerApp', {
         load: (store, result, success) =>
           console.log store.model.prototype.fields.items
           console.log result[0].data
-          debugger
-          # Example message contents: UserID + 4-bit point-selection value
-          message = [@getContext().getUser().ObjectID, `020`]
-          encoded = @PokerMessage.compile message, @Base62.encode
-          decoded = @PokerMessage.decompile encoded, @Base62.decode
+          # debugger
           return
     }
     @DiscussionThread = Ext.create 'Ext.view.View', {
@@ -255,7 +261,8 @@ Ext.define 'RallyPokerApp', {
           '<tpl for=".">',
           '<div class="discussionitem">',
             '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>',
-            '<p class="discussionitem-text">{Text}</p>',
+            # '<p class="discussionitem-text">{Text}</p>',
+            '<p class="discussionitem-text">{Message}</p>',
           '</div>',
           '</tpl>',
         '</div>',

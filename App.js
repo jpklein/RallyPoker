@@ -77,22 +77,34 @@ Ext.define('RallyPokerApp', {
     };
   })(),
   PokerMessage: (function() {
-    var msg, pkg, sep;
+    var env, msg, pkg, sep;
 
     sep = ['/', '&'];
     msg = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$");
-    pkg = '[[' + sep[0] + ']]';
+    env = ['[[', ']]'];
+    pkg = new RegExp("\\[\\[" + sep[0] + "(.+)\\]\\]");
     return {
       compile: function(M) {
-        var fn;
+        var fn, s;
 
-        M.unshift(new Date().getTime());
         fn = arguments[1] || function(x) {
           return x;
         };
-        return M.reduce(function(p, c, i) {
-          return p + (sep[i] || sep[1]) + fn(c);
+        M[0] = sep[0] + fn(M[0]);
+        s = M.length === 1 ? M[0] : M.reduce(function(p, c, i) {
+          return p + sep[1] + fn(c);
         });
+        return env[0] + s + env[1];
+      },
+      extract: function(s) {
+        var a;
+
+        a = s.match(pkg);
+        if (a.length) {
+          return this.decompile(a.pop());
+        } else {
+          return a;
+        }
       },
       decompile: function(s) {
         var M, i, _i, _len, _results;
@@ -232,16 +244,21 @@ Ext.define('RallyPokerApp', {
       itemSelector: 'div.storydetail'
     });
     this.down('#storyview').add(this.StoryPage);
+    this.DiscussionMessageField = new Ext.data.Field({
+      name: 'Message',
+      type: 'string',
+      convert: function(v, rec) {
+        debugger;
+        var message;
+
+        message = [new Date().getTime(), _this.getContext().getUser().ObjectID, 020];
+        return rec.get('Text') + "<br/><p>" + _this.PokerMessage.compile(message, _this.Base62.encode) + "</p>";
+      }
+    });
     Rally.data.ModelFactory.getModel({
       type: 'conversationpost',
       success: function(Model) {
-        Model.prototype.fields.items.push(new Ext.data.Field({
-          name: 'Message',
-          type: 'string',
-          convert: function(v, rec) {
-            return rec.get('Text');
-          }
-        }));
+        Model.prototype.fields.items.push(_this.DiscussionMessageField);
         Model.setFields(Model.prototype.fields.items);
       }
     });
@@ -250,20 +267,14 @@ Ext.define('RallyPokerApp', {
       fetch: ['User', 'CreationDate', 'Text', 'Message'],
       listeners: {
         load: function(store, result, success) {
-          var decoded, encoded, message;
-
           console.log(store.model.prototype.fields.items);
           console.log(result[0].data);
-          debugger;
-          message = [_this.getContext().getUser().ObjectID, 020];
-          encoded = _this.PokerMessage.compile(message, _this.Base62.encode);
-          decoded = _this.PokerMessage.decompile(encoded, _this.Base62.decode);
         }
       }
     });
     this.DiscussionThread = Ext.create('Ext.view.View', {
       store: this.DiscussionsStore,
-      tpl: new Ext.XTemplate('<div class="discussionthread">', '<h3>Discussion</h3>', '<tpl for=".">', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '</div>'),
+      tpl: new Ext.XTemplate('<div class="discussionthread">', '<h3>Discussion</h3>', '<tpl for=".">', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Message}</p>', '</div>', '</tpl>', '</div>'),
       itemSelector: 'div.discussionitem'
     });
     this.down('#storyview').add(this.DiscussionThread);
