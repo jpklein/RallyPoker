@@ -48,6 +48,84 @@ Ext.define('RallyPokerApp', {
       ]
     }
   ],
+  Base62: (function() {
+    var chars;
+
+    chars = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
+    return {
+      encode: function(i) {
+        var s;
+
+        if (i === 0) {
+          return;
+        }
+        s = '';
+        while (i > 0) {
+          s = chars[i % 62] + s;
+          i = Math.floor(i / 62);
+        }
+        return s;
+      },
+      decode: function(a, b, c, d) {
+        for (
+          b = c = (a === (/\W|_|^$/.test(a += "") || a)) - 1;
+          d = a.charCodeAt(c++);
+        ) {
+          b = b * 62 + d - [, 48, 29, 87][d >> 5];
+        }
+        return b;
+      }
+    };
+  })(),
+  PokerMessage: (function() {
+    var env, msg, pkg, sep;
+
+    sep = ['/', '&'];
+    msg = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$");
+    env = ['[[', ']]'];
+    pkg = new RegExp("\\[\\[(" + sep[0] + ".+)\\]\\]");
+    return {
+      compile: function(M) {
+        var fn, s;
+
+        fn = arguments[1] || function(x) {
+          return x;
+        };
+        M[0] = sep[0] + fn(M[0]);
+        s = M.length === 1 ? M[0] : M.reduce(function(p, c, i) {
+          return p + sep[1] + fn(c);
+        });
+        return env[0] + s + env[1];
+      },
+      extract: function(s) {
+        var a;
+
+        if (!s || !(a = s.match(pkg))) {
+          return false;
+        } else {
+          return a.pop();
+        }
+      },
+      parse: function(s) {
+        var M, i, _i, _len, _results;
+
+        if (!msg.test(s)) {
+          return false;
+        }
+        M = s.slice(1).split(sep[1]);
+        if (arguments[1] == null) {
+          return M;
+        } else {
+          _results = [];
+          for (_i = 0, _len = M.length; _i < _len; _i += 1) {
+            i = M[_i];
+            _results.push(arguments[1](i));
+          }
+          return _results;
+        }
+      }
+    };
+  })(),
   launch: function() {
     var _this = this;
 
@@ -132,6 +210,7 @@ Ext.define('RallyPokerApp', {
     });
     this.CurrentStory = Ext.create('Rally.data.WsapiDataStore', {
       model: 'userstory',
+      limit: 1,
       fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion'],
       listeners: {
         load: function(store, result, success) {
@@ -139,8 +218,8 @@ Ext.define('RallyPokerApp', {
             _this.DiscussionsStore.load({
               filters: [
                 {
-                  property: 'ObjectID',
-                  value: result[0].data.Discussion[0].ObjectID
+                  property: 'Artifact.ObjectID',
+                  value: result[0].data.ObjectID
                 }
               ]
             });
@@ -165,13 +244,42 @@ Ext.define('RallyPokerApp', {
       itemSelector: 'div.storydetail'
     });
     this.down('#storyview').add(this.StoryPage);
+    this.cnt = 0;
+    this.DiscussionMessageField = new Ext.data.Field({
+      name: 'Message',
+      type: 'string',
+      convert: function(v, rec) {
+        var message, text;
+
+        _this.cnt++;
+        if (_this.cnt === 2) {
+          message = [new Date().getTime(), _this.getContext().getUser().ObjectID, 020];
+          text = rec.get('Text') + "<br/><p>" + _this.PokerMessage.compile(message, _this.Base62.encode) + "</p>";
+        }
+        if (message = _this.PokerMessage.extract(text)) {
+          return (_this.PokerMessage.parse(message, _this.Base62.decode)).pop();
+        } else {
+          return false;
+        }
+      }
+    });
+    Rally.data.ModelFactory.getModel({
+      type: 'conversationpost',
+      success: function(Model) {
+        Model.prototype.fields.items.push(_this.DiscussionMessageField);
+        Model.setFields(Model.prototype.fields.items);
+      }
+    });
     this.DiscussionsStore = Ext.create('Rally.data.WsapiDataStore', {
       model: 'conversationpost',
-      fetch: ['User', 'CreationDate', 'Text']
+      fetch: ['User', 'CreationDate', 'Text', 'Message']
     });
     this.DiscussionThread = Ext.create('Ext.view.View', {
       store: this.DiscussionsStore,
-      tpl: new Ext.XTemplate('<div class="discussionthread">', '<h3>Discussion</h3>', '<tpl for=".">', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '</div>'),
+      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">', '{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '<li>{User._refObjectName}</li>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '</ul>', '</div>', '</tpl>', '</tpl>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">', '{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount && this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', {
+        shownMessages: false,
+        shownDiscussion: false
+      }),
       itemSelector: 'div.discussionitem'
     });
     this.down('#storyview').add(this.DiscussionThread);
