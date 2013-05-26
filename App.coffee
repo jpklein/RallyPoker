@@ -64,8 +64,9 @@ Ext.define 'RallyPokerApp', {
           d = a.charCodeAt(c++);
         ) {
           b = b * 62 + d - [, 48, 29, 87][d >> 5];
-        }`
-        b
+        }
+        return b`
+        return
     }
 
   PokerMessage: do () ->
@@ -82,9 +83,8 @@ Ext.define 'RallyPokerApp', {
         s = if M.length == 1 then M[0] else M.reduce (p, c, i) -> p + sep[1] + fn c
         env[0] + s + env[1]
       extract: (s) ->
-        a = s.match pkg
-        if not a? then false else a.pop()
-      decode: (s) ->
+        if not s or not (a = s.match pkg) then false else a.pop()
+      parse: (s) ->
         return false if not msg.test s
         M = s.slice(1).split sep[1]
         if not arguments[1]? then M else arguments[1] i for i in M by 1
@@ -165,7 +165,6 @@ Ext.define 'RallyPokerApp', {
     }
     @down('#storypicker').add @StoryList
 
-    # Ext.getCmp('storytitle').update 'Back'
     Ext.getCmp('storyback').on 'click', () =>
       @getLayout().setActiveItem 'storypicker'
       return
@@ -221,17 +220,31 @@ Ext.define 'RallyPokerApp', {
     }
     @down('#storyview').add @StoryPage
 
+    # Damn it feels good to be a gangster.
+    @cnt = 0
     @DiscussionMessageField = new Ext.data.Field {
       name: 'Message'
+      # type: 'object'
       type: 'string'
       convert: (v, rec) =>
-        debugger
-        # Example message contents: UserID + 4-bit point-selection value
-        message = [new Date().getTime(), @getContext().getUser().ObjectID, `020`]
-        text = rec.get('Text') #+ "<br/><p>" + @PokerMessage.compile(message, @Base62.encode) + "</p>"
+        # debugger
+        @cnt++
+        if @cnt == 2
+          # Example message contents: UserID + 4-bit point-selection value
+          message = [new Date().getTime(), @getContext().getUser().ObjectID, `020`]
+          text = rec.get('Text') + "<br/><p>" + @PokerMessage.compile(message, @Base62.encode) + "</p>"
 
+        # if message = @PokerMessage.extract text
+        #   {
+        #     exists: true
+        #     body: (@PokerMessage.parse message, @Base62.decode).pop()
+        #   }
+        # else
+        #   {
+        #     exists: false
+        #   }
         if message = @PokerMessage.extract text
-          (@PokerMessage.decode message, @Base62.decode).pop()
+          (@PokerMessage.parse message, @Base62.decode).pop()
         else
           false
     }
@@ -245,26 +258,51 @@ Ext.define 'RallyPokerApp', {
     @DiscussionsStore = Ext.create 'Rally.data.WsapiDataStore', {
       model: 'conversationpost'
       fetch: ['User', 'CreationDate', 'Text', 'Message']
-      listeners:
-        load: (store, result, success) =>
-          console.log store.model.prototype.fields.items
-          console.log result[0].data
-          # debugger
-          return
+      # listeners:
+      #   load: (store, result, success) =>
+      #     console.log store.model.prototype.fields.items
+      #     console.log result[0].data
+      #     debugger
+      #     return
     }
     @DiscussionThread = Ext.create 'Ext.view.View', {
       store: @DiscussionsStore
       tpl: new Ext.XTemplate(
-        '<div class="discussionthread">',
-          '<h3>Discussion</h3>',
-          '<tpl for=".">',
-          '<div class="discussionitem">',
-            '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>',
-            # '<p class="discussionitem-text">{Text}</p>',
-            '<p class="discussionitem-text">{Message}</p>',
-          '</div>',
+        '<tpl for=".">',
+          '<tpl if="Message !== false">',
+            '<tpl if="!this.shownMessages">',
+            '{% this.shownMessages = true %}',
+              '<div class="messagethread">',
+                '<h3>Who\'s Voted</h3>',
+                '<ul class="messageitems">',
+            '</tpl>',
+                  '<li>{User._refObjectName}</li>',
           '</tpl>',
-        '</div>',
+          '<tpl if="xindex == xcount && this.shownMessages">',
+                '</ul>',
+              '</div>',
+          '</tpl>',
+        '</tpl>',
+        '<tpl for=".">',
+          '<tpl if="Message === false">',
+            '<tpl if="!this.shownDiscussion">',
+            '{% this.shownDiscussion = true %}',
+              '<div class="discussionthread">',
+                '<h3>Discussion</h3>',
+            '</tpl>'
+                '<div class="discussionitem">',
+                  '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>',
+                  '<p class="discussionitem-text">{Text}</p>',
+                '</div>',
+          '</tpl>',
+          '<tpl if="xindex == xcount && this.shownDiscussion">',
+              '</div>',
+          '</tpl>',
+        '</tpl>',
+        {
+          shownMessages: false
+          shownDiscussion: false
+        }
       )
       itemSelector: 'div.discussionitem'
     }

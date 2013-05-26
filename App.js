@@ -72,7 +72,8 @@ Ext.define('RallyPokerApp', {
           d = a.charCodeAt(c++);
         ) {
           b = b * 62 + d - [, 48, 29, 87][d >> 5];
-        };        return b;
+        }
+        return b;
       }
     };
   })(),
@@ -99,14 +100,13 @@ Ext.define('RallyPokerApp', {
       extract: function(s) {
         var a;
 
-        a = s.match(pkg);
-        if (a == null) {
+        if (!s || !(a = s.match(pkg))) {
           return false;
         } else {
           return a.pop();
         }
       },
-      decode: function(s) {
+      parse: function(s) {
         var M, i, _i, _len, _results;
 
         if (!msg.test(s)) {
@@ -244,17 +244,20 @@ Ext.define('RallyPokerApp', {
       itemSelector: 'div.storydetail'
     });
     this.down('#storyview').add(this.StoryPage);
+    this.cnt = 0;
     this.DiscussionMessageField = new Ext.data.Field({
       name: 'Message',
       type: 'string',
       convert: function(v, rec) {
-        debugger;
         var message, text;
 
-        message = [new Date().getTime(), _this.getContext().getUser().ObjectID, 020];
-        text = rec.get('Text');
+        _this.cnt++;
+        if (_this.cnt === 2) {
+          message = [new Date().getTime(), _this.getContext().getUser().ObjectID, 020];
+          text = rec.get('Text') + "<br/><p>" + _this.PokerMessage.compile(message, _this.Base62.encode) + "</p>";
+        }
         if (message = _this.PokerMessage.extract(text)) {
-          return (_this.PokerMessage.decode(message, _this.Base62.decode)).pop();
+          return (_this.PokerMessage.parse(message, _this.Base62.decode)).pop();
         } else {
           return false;
         }
@@ -269,17 +272,14 @@ Ext.define('RallyPokerApp', {
     });
     this.DiscussionsStore = Ext.create('Rally.data.WsapiDataStore', {
       model: 'conversationpost',
-      fetch: ['User', 'CreationDate', 'Text', 'Message'],
-      listeners: {
-        load: function(store, result, success) {
-          console.log(store.model.prototype.fields.items);
-          console.log(result[0].data);
-        }
-      }
+      fetch: ['User', 'CreationDate', 'Text', 'Message']
     });
     this.DiscussionThread = Ext.create('Ext.view.View', {
       store: this.DiscussionsStore,
-      tpl: new Ext.XTemplate('<div class="discussionthread">', '<h3>Discussion</h3>', '<tpl for=".">', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Message}</p>', '</div>', '</tpl>', '</div>'),
+      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">', '{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '<li>{User._refObjectName}</li>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '</ul>', '</div>', '</tpl>', '</tpl>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">', '{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount && this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', {
+        shownMessages: false,
+        shownDiscussion: false
+      }),
       itemSelector: 'div.discussionitem'
     });
     this.down('#storyview').add(this.DiscussionThread);
