@@ -258,12 +258,14 @@ Ext.define 'RallyPokerApp', {
     @DiscussionsStore = Ext.create 'Rally.data.WsapiDataStore', {
       model: 'conversationpost'
       fetch: ['User', 'CreationDate', 'Text', 'Message']
-      # listeners:
-      #   load: (store, result, success) =>
+      listeners:
+        load: (store, result, success) =>
       #     console.log store.model.prototype.fields.items
       #     console.log result[0].data
       #     debugger
-      #     return
+
+          @MessageAddNew.render Ext.get('messageaddnew')
+          return
     }
     @DiscussionThread = Ext.create 'Ext.view.View', {
       store: @DiscussionsStore
@@ -283,6 +285,7 @@ Ext.define 'RallyPokerApp', {
               '</div>',
           '</tpl>',
         '</tpl>',
+              '<div id="messageaddnew"><h3>Cast your vote</h3></div>',
         '<tpl for=".">',
           '<tpl if="Message === false">',
             '<tpl if="!this.shownDiscussion">',
@@ -308,5 +311,51 @@ Ext.define 'RallyPokerApp', {
     }
     @down('#storyview').add @DiscussionThread
 
+    # @MessageAddNew = Ext.create 'Ext.Container', {
+    #   items: [{
+    #     xtype: 'rallyaddnew'
+    #     recordTypes: ['User Story']
+    #     ignoredRequiredFields: ['Name', 'ScheduleState', 'Project']
+    #     listeners: {
+    #       create: (addNew, record) ->
+    #         Ext.Msg.alert('Add New', 'Added record named ' + record.get('Name'))
+    #     }
+    #   }]
+    # }
+    @Estimator = Ext.create 'RallyPokerApp.EstimateSelector', {}
+
     return
+}
+
+Ext.define 'RallyPokerApp.EstimateSelector', {
+  extend: 'Ext.Container'
+  cls: 'estimateselector'
+  # alias: 'widget.rallyaddnew'
+  config: {
+    # @cfg {Array} (required)
+    # a list of values that can be used as story estimates
+    deck: [
+      { value: `00`, label: '?' }
+      { value: `01`, label: '0' }
+      { value: `02`, label: '&#189;' } # "½"?
+      { value: `03`, label: '1' }
+      { value: `04`, label: '2' }
+      { value: `05`, label: '3' }
+      { value: `06`, label: '5' }
+      { value: `07`, label: '8' }
+      { value: `010`, label: '13' }
+      { value: `011`, label: '20' }
+      { value: `012`, label: '40' }
+      { value: `013`, label: '100' }
+      # { value: `014`, label: '' }
+      # { value: `015`, label: '' }
+      # { value: `016`, label: '' }
+      # { value: `017`, label: '' }
+    ]
+  }
+
+  constructor: (config) ->
+    debugger
+    this.mergeConfig config
+    this.callParent [this.config]
 }

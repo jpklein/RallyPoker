@@ -272,16 +272,72 @@ Ext.define('RallyPokerApp', {
     });
     this.DiscussionsStore = Ext.create('Rally.data.WsapiDataStore', {
       model: 'conversationpost',
-      fetch: ['User', 'CreationDate', 'Text', 'Message']
+      fetch: ['User', 'CreationDate', 'Text', 'Message'],
+      listeners: {
+        load: function(store, result, success) {
+          _this.MessageAddNew.render(Ext.get('messageaddnew'));
+        }
+      }
     });
     this.DiscussionThread = Ext.create('Ext.view.View', {
       store: this.DiscussionsStore,
-      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">', '{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '<li>{User._refObjectName}</li>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '</ul>', '</div>', '</tpl>', '</tpl>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">', '{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount && this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', {
+      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">', '{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '<li>{User._refObjectName}</li>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '</ul>', '</div>', '</tpl>', '</tpl>', '<div id="messageaddnew"><h3>Cast your vote</h3></div>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">', '{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount && this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', {
         shownMessages: false,
         shownDiscussion: false
       }),
       itemSelector: 'div.discussionitem'
     });
     this.down('#storyview').add(this.DiscussionThread);
+    this.Estimator = Ext.create('RallyPokerApp.EstimateSelector', {});
+  }
+});
+
+Ext.define('RallyPokerApp.EstimateSelector', {
+  extend: 'Ext.Container',
+  cls: 'estimateselector',
+  config: {
+    deck: [
+      {
+        value: 00,
+        label: '?'
+      }, {
+        value: 01,
+        label: '0'
+      }, {
+        value: 02,
+        label: '&#189;'
+      }, {
+        value: 03,
+        label: '1'
+      }, {
+        value: 04,
+        label: '2'
+      }, {
+        value: 05,
+        label: '3'
+      }, {
+        value: 06,
+        label: '5'
+      }, {
+        value: 07,
+        label: '8'
+      }, {
+        value: 010,
+        label: '13'
+      }, {
+        value: 011,
+        label: '20'
+      }, {
+        value: 012,
+        label: '40'
+      }, {
+        value: 013,
+        label: '100'
+      }
+    ]
+  },
+  constructor: function(config) {
+    debugger;    this.mergeConfig(config);
+    return this.callParent([this.config]);
   }
 });
