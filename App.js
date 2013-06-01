@@ -272,12 +272,7 @@ Ext.define('RallyPokerApp', {
     });
     this.DiscussionsStore = Ext.create('Rally.data.WsapiDataStore', {
       model: 'conversationpost',
-      fetch: ['User', 'CreationDate', 'Text', 'Message'],
-      listeners: {
-        load: function(store, result, success) {
-          _this.MessageAddNew.render(Ext.get('messageaddnew'));
-        }
-      }
+      fetch: ['User', 'CreationDate', 'Text', 'Message']
     });
     this.DiscussionThread = Ext.create('Ext.view.View', {
       store: this.DiscussionsStore,
@@ -285,10 +280,16 @@ Ext.define('RallyPokerApp', {
         shownMessages: false,
         shownDiscussion: false
       }),
+      listeners: {
+        refresh: function() {
+          Ext.create('RallyPokerApp.EstimateSelector', {
+            renderTo: Ext.query('#messageaddnew')[0]
+          });
+        }
+      },
       itemSelector: 'div.discussionitem'
     });
     this.down('#storyview').add(this.DiscussionThread);
-    this.Estimator = Ext.create('RallyPokerApp.EstimateSelector', {});
   }
 });
 
@@ -336,8 +337,29 @@ Ext.define('RallyPokerApp.EstimateSelector', {
       }
     ]
   },
+  items: [],
   constructor: function(config) {
-    debugger;    this.mergeConfig(config);
-    return this.callParent([this.config]);
+    var c, _i, _len, _ref;
+
+    this.mergeConfig(config);
+    _ref = this.config.deck;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      c = _ref[_i];
+      this.items.push({
+        xtype: 'component',
+        id: 'pokercard-' + c.value,
+        cls: 'pokercard',
+        html: c.label,
+        listeners: {
+          click: {
+            element: 'el',
+            fn: function() {
+              return alert('click el');
+            }
+          }
+        }
+      });
+    }
+    this.callParent([this.config]);
   }
 });

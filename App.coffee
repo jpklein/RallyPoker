@@ -258,14 +258,13 @@ Ext.define 'RallyPokerApp', {
     @DiscussionsStore = Ext.create 'Rally.data.WsapiDataStore', {
       model: 'conversationpost'
       fetch: ['User', 'CreationDate', 'Text', 'Message']
-      listeners:
-        load: (store, result, success) =>
+      # listeners:
+      #   load: (store, result, success) =>
       #     console.log store.model.prototype.fields.items
       #     console.log result[0].data
       #     debugger
-
-          @MessageAddNew.render Ext.get('messageaddnew')
-          return
+      #     @MessageAddNew.render Ext.get('messageaddnew')
+      #     return
     }
     @DiscussionThread = Ext.create 'Ext.view.View', {
       store: @DiscussionsStore
@@ -307,22 +306,17 @@ Ext.define 'RallyPokerApp', {
           shownDiscussion: false
         }
       )
+      listeners:
+        refresh: () ->
+        # afterRender: () ->
+          # debugger
+          # @DiscussionThread.down('#messageaddnew').add @Estimator
+          # Addnew = Ext.query('#messageaddnew')
+          Ext.create 'RallyPokerApp.EstimateSelector', {renderTo: Ext.query('#messageaddnew')[0]}
+          return
       itemSelector: 'div.discussionitem'
     }
     @down('#storyview').add @DiscussionThread
-
-    # @MessageAddNew = Ext.create 'Ext.Container', {
-    #   items: [{
-    #     xtype: 'rallyaddnew'
-    #     recordTypes: ['User Story']
-    #     ignoredRequiredFields: ['Name', 'ScheduleState', 'Project']
-    #     listeners: {
-    #       create: (addNew, record) ->
-    #         Ext.Msg.alert('Add New', 'Added record named ' + record.get('Name'))
-    #     }
-    #   }]
-    # }
-    @Estimator = Ext.create 'RallyPokerApp.EstimateSelector', {}
 
     return
 }
@@ -330,8 +324,7 @@ Ext.define 'RallyPokerApp', {
 Ext.define 'RallyPokerApp.EstimateSelector', {
   extend: 'Ext.Container'
   cls: 'estimateselector'
-  # alias: 'widget.rallyaddnew'
-  config: {
+  config:
     # @cfg {Array} (required)
     # a list of values that can be used as story estimates
     deck: [
@@ -352,10 +345,22 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
       # { value: `016`, label: '' }
       # { value: `017`, label: '' }
     ]
-  }
+
+  items: []
 
   constructor: (config) ->
-    debugger
-    this.mergeConfig config
-    this.callParent [this.config]
+    @mergeConfig config
+    for c in @config.deck
+      @items.push
+        xtype: 'component'
+        id: 'pokercard-' + c.value
+        cls: 'pokercard'
+        html: c.label
+        listeners:
+          click:
+            element: 'el'
+            fn: () -> alert 'click el'
+
+    @callParent [@config]
+    return
 }
