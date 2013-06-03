@@ -1,5 +1,6 @@
 Ext.define 'RallyPokerApp', {
   extend: 'Rally.app.App'
+  id: 'RallyPokerApp'
   componentCls: 'app'
 
   layout: 'card'
@@ -324,6 +325,8 @@ Ext.define 'RallyPokerApp', {
 Ext.define 'RallyPokerApp.EstimateSelector', {
   extend: 'Ext.Container'
   cls: 'estimateselector'
+  # constructor uses config to populate items.
+  items: []
   config:
     # @cfg {Array} (required)
     # a list of values that can be used as story estimates
@@ -346,20 +349,33 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
       # { value: `017`, label: '' }
     ]
 
-  items: []
-
   constructor: (config) ->
     @mergeConfig config
+
+    # helper function bound to card's click event.
+    _onCardClick = (e, t) =>
+      _this = Ext.getCmp 'RallyPokerApp'
+      message = [
+        new Date().getTime()
+        @getContext().getUser().ObjectID
+        Ext.getCmp(t.id).config.value
+      ]
+      alert 'click el: ' + @PokerMessage.compile message, @Base62.encode
+      return
+    # initialize cards.
     for c in @config.deck
       @items.push
         xtype: 'component'
         id: 'pokercard-' + c.value
         cls: 'pokercard'
         html: c.label
+        config:
+          label: c.label
+          value: c.value
         listeners:
           click:
             element: 'el'
-            fn: () -> alert 'click el'
+            fn: _onCardClick
 
     @callParent [@config]
     return
