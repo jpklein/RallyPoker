@@ -87,13 +87,14 @@ Ext.define('RallyPokerApp', {
     pkg = new RegExp("\\[\\[(" + sep[0] + ".+)\\]\\]");
     return {
       compile: function(M) {
-        var fn, s;
+        var a, fn, s;
 
         fn = arguments[1] || function(x) {
           return x;
         };
-        M[0] = sep[0] + fn(M[0]);
-        s = M.length === 1 ? M[0] : M.reduce(function(p, c, i) {
+        a = Ext.clone(M);
+        a[0] = sep[0] + fn(M[0]);
+        s = a.length === 1 ? a[0] : a.reduce(function(p, c, i) {
           return p + sep[1] + fn(c);
         });
         return env[0] + s + env[1];
@@ -254,7 +255,6 @@ Ext.define('RallyPokerApp', {
 
         _this.cnt++;
         if (_this.cnt === 2) {
-          debugger;
           message = [new Date().getTime(), _this.getContext().getUser().ObjectID, 020];
           text = rec.get('Text') + "<br/><p>" + _this.PokerMessage.compile(message, _this.Base62.encode) + "</p>";
         }
@@ -360,10 +360,7 @@ Ext.define('RallyPokerApp.EstimateSelector', {
         id: 'pokercard-' + c.value,
         cls: 'pokercard',
         html: c.label,
-        config: {
-          label: c.label,
-          value: c.value
-        },
+        config: c,
         listeners: {
           click: {
             element: 'el',

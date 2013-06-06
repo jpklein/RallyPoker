@@ -80,8 +80,9 @@ Ext.define 'RallyPokerApp', {
     {
       compile: (M) ->
         fn = arguments[1] || (x) -> x
-        M[0] = sep[0] + fn M[0]
-        s = if M.length == 1 then M[0] else M.reduce (p, c, i) -> p + sep[1] + fn c
+        a = Ext.clone M
+        a[0] = sep[0] + fn M[0]
+        s = if a.length == 1 then a[0] else a.reduce (p, c, i) -> p + sep[1] + fn c
         env[0] + s + env[1]
       extract: (s) ->
         if not s or not (a = s.match pkg) then false else a.pop()
@@ -369,9 +370,7 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
         id: 'pokercard-' + c.value
         cls: 'pokercard'
         html: c.label
-        config:
-          label: c.label
-          value: c.value
+        config: c
         listeners:
           click:
             element: 'el'
