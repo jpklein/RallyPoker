@@ -3,6 +3,7 @@ Ext.define('RallyPokerApp', {
   extend: 'Rally.app.App',
   id: 'RallyPokerApp',
   componentCls: 'app',
+  models: [],
   layout: 'card',
   items: [
     {
@@ -268,6 +269,7 @@ Ext.define('RallyPokerApp', {
     Rally.data.ModelFactory.getModel({
       type: 'conversationpost',
       success: function(Model) {
+        _this.models['conversationpost'] = Ext.clone(Model);
         Model.prototype.fields.items.push(_this.DiscussionMessageField);
         Model.setFields(Model.prototype.fields.items);
       }
@@ -346,11 +348,23 @@ Ext.define('RallyPokerApp.EstimateSelector', {
 
     this.mergeConfig(config);
     _onCardClick = function(e, t) {
-      var message;
+      var compiled, message, record, userId;
 
       _this = Ext.getCmp('RallyPokerApp');
-      message = [new Date().getTime(), _this.getContext().getUser().ObjectID, Ext.getCmp(t.id).config.value];
-      alert('click el: ' + _this.PokerMessage.compile(message, _this.Base62.encode));
+      userId = _this.getContext().getUser().ObjectID;
+      message = [new Date().getTime(), userId, Ext.getCmp(t.id).config.value];
+      compiled = _this.PokerMessage.compile(message, _this.Base62.encode);
+      record = Ext.create(_this.models['conversationpost']);
+      record.set({
+        Artifact: _this.CurrentStory.data.keys[0],
+        User: userId,
+        Text: 'Pointed this story with RallyPoker.<span style="display:none">' + encodeURIComponent(compiled) + '<\/span>'
+      });
+      record.save({
+        failure: function(b, o) {
+          debugger;          alert('it borked :(');
+        }
+      });
     };
     _ref = this.config.deck;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {

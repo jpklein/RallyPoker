@@ -2,7 +2,7 @@ Ext.define 'RallyPokerApp', {
   extend: 'Rally.app.App'
   id: 'RallyPokerApp'
   componentCls: 'app'
-
+  models: []
   layout: 'card'
   items: [{
     id: 'storypicker'
@@ -253,6 +253,7 @@ Ext.define 'RallyPokerApp', {
     Rally.data.ModelFactory.getModel {
       type: 'conversationpost'
       success: (Model) =>
+        @models['conversationpost'] = Ext.clone Model
         Model.prototype.fields.items.push @DiscussionMessageField
         Model.setFields Model.prototype.fields.items
         return
@@ -356,12 +357,24 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
     # helper function bound to card's click event.
     _onCardClick = (e, t) =>
       _this = Ext.getCmp 'RallyPokerApp'
-      message = [
-        new Date().getTime()
-        @getContext().getUser().ObjectID
-        Ext.getCmp(t.id).config.value
-      ]
-      alert 'click el: ' + @PokerMessage.compile message, @Base62.encode
+      userId = @getContext().getUser().ObjectID
+      message = [new Date().getTime(), userId, Ext.getCmp(t.id).config.value]
+      compiled = @PokerMessage.compile message, @Base62.encode
+      record = Ext.create @models['conversationpost']
+      record.set {
+        Artifact: @CurrentStory.data.keys[0]
+        User: userId
+        Text: 'Pointed this story with RallyPoker.<span style="display:none">' + encodeURIComponent(compiled) + '<\/span>'
+      }
+      # debugger;
+      record.save {
+        # success: (b, o) ->
+        #   return
+        failure: (b, o) ->
+          debugger;
+          alert 'it borked :('
+          return
+      }
       return
     # initialize cards.
     for c in @config.deck
