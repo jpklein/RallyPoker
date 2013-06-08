@@ -71,11 +71,13 @@ Ext.define 'RallyPokerApp', {
     }
 
   PokerMessage: do () ->
+    # helper fn to escape RegEx-reserved strings
+    esc = (str) -> str.replace /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&"
     # [strings] ==> encoded message + custom delimiters
     sep = ['/', '&']
-    msg = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$")
+    msg = new RegExp "^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$"
     env = ['[[', ']]']
-    pkg = new RegExp("\\[\\[(" + sep[0] + ".+)\\]\\]")
+    pkg = new RegExp esc(env[0]) + "(" + sep[0] + ".+?)" + esc(env[1])
 
     {
       compile: (M) ->
@@ -85,7 +87,7 @@ Ext.define 'RallyPokerApp', {
         s = if a.length == 1 then a[0] else a.reduce (p, c, i) -> p + sep[1] + fn c
         env[0] + s + env[1]
       extract: (s) ->
-        if not s or not (a = s.match pkg) then false else a.pop()
+        if s and a = s.match pkg then a.pop() else false
       parse: (s) ->
         return false if not msg.test s
         M = s.slice(1).split sep[1]
@@ -222,30 +224,13 @@ Ext.define 'RallyPokerApp', {
     }
     @down('#storyview').add @StoryPage
 
-    # Damn it feels good to be a gangster.
-    @cnt = 0
+    # custom field definition to parse poker messages from discussion items.
     @DiscussionMessageField = new Ext.data.Field {
       name: 'Message'
-      # type: 'object'
       type: 'string'
       convert: (v, rec) =>
-        # debugger
-        @cnt++
-        if @cnt == 2
-          # Example message contents: UserID + 4-bit point-selection value
-          message = [new Date().getTime(), @getContext().getUser().ObjectID, `020`]
-          text = rec.get('Text') + "<br/><p>" + @PokerMessage.compile(message, @Base62.encode) + "</p>"
-
-        # if message = @PokerMessage.extract text
-        #   {
-        #     exists: true
-        #     body: (@PokerMessage.parse message, @Base62.decode).pop()
-        #   }
-        # else
-        #   {
-        #     exists: false
-        #   }
-        if message = @PokerMessage.extract text
+        if message = @PokerMessage.extract rec.get 'Text'
+          # Expected message contents: UserID + 4-bit point-selection value
           (@PokerMessage.parse message, @Base62.decode).pop()
         else
           false

@@ -80,12 +80,15 @@ Ext.define('RallyPokerApp', {
     };
   })(),
   PokerMessage: (function() {
-    var env, msg, pkg, sep;
+    var env, esc, msg, pkg, sep;
 
+    esc = function(str) {
+      return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+    };
     sep = ['/', '&'];
     msg = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$");
     env = ['[[', ']]'];
-    pkg = new RegExp("\\[\\[(" + sep[0] + ".+)\\]\\]");
+    pkg = new RegExp(esc(env[0]) + "(" + sep[0] + ".+?)" + esc(env[1]));
     return {
       compile: function(M) {
         var a, fn, s;
@@ -103,10 +106,10 @@ Ext.define('RallyPokerApp', {
       extract: function(s) {
         var a;
 
-        if (!s || !(a = s.match(pkg))) {
-          return false;
-        } else {
+        if (s && (a = s.match(pkg))) {
           return a.pop();
+        } else {
+          return false;
         }
       },
       parse: function(s) {
@@ -247,19 +250,15 @@ Ext.define('RallyPokerApp', {
       itemSelector: 'div.storydetail'
     });
     this.down('#storyview').add(this.StoryPage);
-    this.cnt = 0;
     this.DiscussionMessageField = new Ext.data.Field({
       name: 'Message',
       type: 'string',
       convert: function(v, rec) {
-        var message, text;
+        debugger;
+        var message, x;
 
-        _this.cnt++;
-        if (_this.cnt === 2) {
-          message = [new Date().getTime(), _this.getContext().getUser().ObjectID, 020];
-          text = rec.get('Text') + "<br/><p>" + _this.PokerMessage.compile(message, _this.Base62.encode) + "</p>";
-        }
-        if (message = _this.PokerMessage.extract(text)) {
+        x = 1;
+        if (message = _this.PokerMessage.extract(rec.get('Text'))) {
           return (_this.PokerMessage.parse(message, _this.Base62.decode)).pop();
         } else {
           return false;
