@@ -1,7 +1,8 @@
 Ext.define 'RallyPokerApp', {
   extend: 'Rally.app.App'
+  id: 'RallyPokerApp'
   componentCls: 'app'
-
+  models: []
   layout: 'card'
   items: [{
     id: 'storypicker'
@@ -79,8 +80,9 @@ Ext.define 'RallyPokerApp', {
     {
       compile: (M) ->
         fn = arguments[1] || (x) -> x
-        M[0] = sep[0] + fn M[0]
-        s = if M.length == 1 then M[0] else M.reduce (p, c, i) -> p + sep[1] + fn c
+        a = Ext.clone M
+        a[0] = sep[0] + fn M[0]
+        s = if a.length == 1 then a[0] else a.reduce (p, c, i) -> p + sep[1] + fn c
         env[0] + s + env[1]
       extract: (s) ->
         if not s or not (a = s.match pkg) then false else a.pop()
@@ -251,6 +253,7 @@ Ext.define 'RallyPokerApp', {
     Rally.data.ModelFactory.getModel {
       type: 'conversationpost'
       success: (Model) =>
+        @models['conversationpost'] = Ext.clone Model
         Model.prototype.fields.items.push @DiscussionMessageField
         Model.setFields Model.prototype.fields.items
         return
@@ -263,6 +266,7 @@ Ext.define 'RallyPokerApp', {
       #     console.log store.model.prototype.fields.items
       #     console.log result[0].data
       #     debugger
+      #     @MessageAddNew.render Ext.get('messageaddnew')
       #     return
     }
     @DiscussionThread = Ext.create 'Ext.view.View', {
@@ -283,6 +287,7 @@ Ext.define 'RallyPokerApp', {
               '</div>',
           '</tpl>',
         '</tpl>',
+              '<div id="messageaddnew"><h3>Cast your vote</h3></div>',
         '<tpl for=".">',
           '<tpl if="Message === false">',
             '<tpl if="!this.shownDiscussion">',
@@ -304,9 +309,86 @@ Ext.define 'RallyPokerApp', {
           shownDiscussion: false
         }
       )
+      listeners:
+        refresh: () ->
+        # afterRender: () ->
+          # debugger
+          # @DiscussionThread.down('#messageaddnew').add @Estimator
+          # Addnew = Ext.query('#messageaddnew')
+          Ext.create 'RallyPokerApp.EstimateSelector', {renderTo: Ext.query('#messageaddnew')[0]}
+          return
       itemSelector: 'div.discussionitem'
     }
     @down('#storyview').add @DiscussionThread
 
+    return
+}
+
+Ext.define 'RallyPokerApp.EstimateSelector', {
+  extend: 'Ext.Container'
+  cls: 'estimateselector'
+  # constructor uses config to populate items.
+  items: []
+  config:
+    # @cfg {Array} (required)
+    # a list of values that can be used as story estimates
+    deck: [
+      { value: `00`, label: '?' }
+      { value: `01`, label: '0' }
+      { value: `02`, label: '&#189;' } # "½"?
+      { value: `03`, label: '1' }
+      { value: `04`, label: '2' }
+      { value: `05`, label: '3' }
+      { value: `06`, label: '5' }
+      { value: `07`, label: '8' }
+      { value: `010`, label: '13' }
+      { value: `011`, label: '20' }
+      { value: `012`, label: '40' }
+      { value: `013`, label: '100' }
+      # { value: `014`, label: '' }
+      # { value: `015`, label: '' }
+      # { value: `016`, label: '' }
+      # { value: `017`, label: '' }
+    ]
+
+  constructor: (config) ->
+    @mergeConfig config
+
+    # helper function bound to card's click event.
+    _onCardClick = (e, t) =>
+      _this = Ext.getCmp 'RallyPokerApp'
+      userId = @getContext().getUser().ObjectID
+      message = [new Date().getTime(), userId, Ext.getCmp(t.id).config.value]
+      compiled = @PokerMessage.compile message, @Base62.encode
+      record = Ext.create @models['conversationpost']
+      record.set {
+        Artifact: @CurrentStory.data.keys[0]
+        User: userId
+        Text: 'Pointed this story with RallyPoker.<span style="display:none">' + encodeURIComponent(compiled) + '<\/span>'
+      }
+      # debugger;
+      record.save {
+        # success: (b, o) ->
+        #   return
+        failure: (b, o) ->
+          debugger;
+          alert 'it borked :('
+          return
+      }
+      return
+    # initialize cards.
+    for c in @config.deck
+      @items.push
+        xtype: 'component'
+        id: 'pokercard-' + c.value
+        cls: 'pokercard'
+        html: c.label
+        config: c
+        listeners:
+          click:
+            element: 'el'
+            fn: _onCardClick
+
+    @callParent [@config]
     return
 }
