@@ -259,24 +259,27 @@ Ext.define 'RallyPokerApp', {
       tpl: new Ext.XTemplate(
         '<tpl for=".">',
           '<tpl if="Message !== false">',
-            '<tpl if="!this.shownMessages">',
-            '{% this.shownMessages = true %}',
+            '<tpl if="!this.shownMessages">{% this.shownMessages = true %}',
               '<div class="messagethread">',
                 '<h3>Who\'s Voted</h3>',
                 '<ul class="messageitems">',
             '</tpl>',
-                  '<li>{User._refObjectName}</li>',
           '</tpl>',
           '<tpl if="xindex == xcount && this.shownMessages">',
+            '<tpl for="whoVoted">',
+                  '<li>{name} at {when}</li>',
+            '</tpl>'
                 '</ul>',
               '</div>',
+              '<div id="messageaddnew"><h3>',
+            '<tpl if="!this.accountVoted">Cast your vote</tpl>',
+            '<tpl if="this.accountVoted">You voted: {Message}</tpl>',
+              '</h3></div>',
           '</tpl>',
         '</tpl>',
-              '<div id="messageaddnew"><h3>Cast your vote</h3></div>',
         '<tpl for=".">',
           '<tpl if="Message === false">',
-            '<tpl if="!this.shownDiscussion">',
-            '{% this.shownDiscussion = true %}',
+            '<tpl if="!this.shownDiscussion">{% this.shownDiscussion = true %}',
               '<div class="discussionthread">',
                 '<h3>Discussion</h3>',
             '</tpl>'
@@ -290,17 +293,44 @@ Ext.define 'RallyPokerApp', {
           '</tpl>',
         '</tpl>',
         {
+          accountRef: "/user/" + Rally.environment.getContext().getUser().ObjectID
+          accountVoted: false
           shownMessages: false
           shownDiscussion: false
+          whoVoted: {}
         }
       )
-      listeners:
-        refresh: () ->
-        # afterRender: () ->
+      prepareData: (data, index, record) ->
+        if data.Message
+          `var timestamp = data.CreationDate.getTime()`
+          if not @tpl.whoVoted[data.User._ref]? or timestamp > @tpl.whoVoted[data.User._ref].when
+            @tpl.whoVoted[data.User._ref] =
+              when: timestamp
+              name: data.User._refObjectName
+        if index + 1 == @store.data.length
+          `var whenVoted = [], voteMap = {}`
+          data.whoVoted = []
           # debugger
-          # @DiscussionThread.down('#messageaddnew').add @Estimator
-          # Addnew = Ext.query('#messageaddnew')
-          Ext.create 'RallyPokerApp.EstimateSelector', {renderTo: Ext.query('#messageaddnew')[0]}
+          for k, V of @tpl.whoVoted
+            @tpl.accountVoted = true if k == @tpl.accountRef
+            if @tpl.whoVoted.hasOwnProperty k
+              whenVoted.push V.when
+              voteMap[V.when] = V
+          whenVoted.sort()
+          for k in whenVoted
+            D = new Date voteMap[k].when
+            voteMap[k].when = Ext.util.Format.date(D, 'g:iA') + ' on ' + Ext.util.Format.date(D, 'm-d-Y')
+            data.whoVoted.push voteMap[k]
+          # console.log whenVoted
+          # console.log @tpl.whenVoted
+        data
+      listeners:
+        # afterRender: () ->
+        refresh: () ->
+          # debugger
+          # console.log @tpl.shownMessages if @store.data.items.length
+          # @todo add constructor parameter to switch display if user has voted.
+          Ext.create 'RallyPokerApp.EstimateSelector', {renderTo: Ext.query('#messageaddnew')[0]} if not @tpl.accountVoted
           return
       itemSelector: 'div.discussionitem'
     }

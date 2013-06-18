@@ -254,10 +254,8 @@ Ext.define('RallyPokerApp', {
       name: 'Message',
       type: 'string',
       convert: function(v, rec) {
-        debugger;
-        var message, x;
+        var message;
 
-        x = 1;
         if (message = _this.PokerMessage.extract(rec.get('Text'))) {
           return (_this.PokerMessage.parse(message, _this.Base62.decode)).pop();
         } else {
@@ -279,15 +277,56 @@ Ext.define('RallyPokerApp', {
     });
     this.DiscussionThread = Ext.create('Ext.view.View', {
       store: this.DiscussionsStore,
-      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">', '{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '<li>{User._refObjectName}</li>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '</ul>', '</div>', '</tpl>', '</tpl>', '<div id="messageaddnew"><h3>Cast your vote</h3></div>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">', '{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount && this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', {
+      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '<tpl for="whoVoted">', '<li>{name} at {when}</li>', '</tpl>', '</ul>', '</div>', '<div id="messageaddnew"><h3>', '<tpl if="!this.accountVoted">Cast your vote</tpl>', '<tpl if="this.accountVoted">You voted: {Message}</tpl>', '</h3></div>', '</tpl>', '</tpl>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount && this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', {
+        accountRef: "/user/" + Rally.environment.getContext().getUser().ObjectID,
+        accountVoted: false,
         shownMessages: false,
-        shownDiscussion: false
+        shownDiscussion: false,
+        whoVoted: {}
       }),
+      prepareData: function(data, index, record) {
+        var D, V, k, _i, _len, _ref;
+
+        if (data.Message) {
+          var timestamp = data.CreationDate.getTime();
+          if ((this.tpl.whoVoted[data.User._ref] == null) || timestamp > this.tpl.whoVoted[data.User._ref].when) {
+            this.tpl.whoVoted[data.User._ref] = {
+              when: timestamp,
+              name: data.User._refObjectName
+            };
+          }
+        }
+        if (index + 1 === this.store.data.length) {
+          var whenVoted = [], voteMap = {};
+          data.whoVoted = [];
+          _ref = this.tpl.whoVoted;
+          for (k in _ref) {
+            V = _ref[k];
+            if (k === this.tpl.accountRef) {
+              this.tpl.accountVoted = true;
+            }
+            if (this.tpl.whoVoted.hasOwnProperty(k)) {
+              whenVoted.push(V.when);
+              voteMap[V.when] = V;
+            }
+          }
+          whenVoted.sort();
+          for (_i = 0, _len = whenVoted.length; _i < _len; _i++) {
+            k = whenVoted[_i];
+            D = new Date(voteMap[k].when);
+            voteMap[k].when = Ext.util.Format.date(D, 'g:iA') + ' on ' + Ext.util.Format.date(D, 'm-d-Y');
+            data.whoVoted.push(voteMap[k]);
+          }
+        }
+        return data;
+      },
       listeners: {
         refresh: function() {
-          Ext.create('RallyPokerApp.EstimateSelector', {
-            renderTo: Ext.query('#messageaddnew')[0]
-          });
+          if (!this.tpl.accountVoted) {
+            Ext.create('RallyPokerApp.EstimateSelector', {
+              renderTo: Ext.query('#messageaddnew')[0]
+            });
+          }
         }
       },
       itemSelector: 'div.discussionitem'
