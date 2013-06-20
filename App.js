@@ -277,12 +277,13 @@ Ext.define('RallyPokerApp', {
     });
     this.DiscussionThread = Ext.create('Ext.view.View', {
       store: this.DiscussionsStore,
-      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '<tpl for="whoVoted">', '<li>{name} at {when}</li>', '</tpl>', '</ul>', '</div>', '<div id="messageaddnew"><h3>', '<tpl if="!this.accountVoted">Cast your vote</tpl>', '<tpl if="this.accountVoted">You voted: {Message}</tpl>', '</h3></div>', '</tpl>', '</tpl>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount && this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', {
+      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '<tpl for="whoVoted">', '<li>{name} at {when}</li>', '</tpl>', '</ul>', '</div>', '<div id="messageaddnew"></div>', '</tpl>', '</tpl>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount">{% this.processed = true %}', '<tpl if="this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', '</tpl>', {
         accountRef: "/user/" + Rally.environment.getContext().getUser().ObjectID,
         accountVoted: false,
         shownMessages: false,
         shownDiscussion: false,
-        whoVoted: {}
+        whoVoted: {},
+        processed: false
       }),
       prepareData: function(data, index, record) {
         var D, V, k, _i, _len, _ref;
@@ -292,7 +293,9 @@ Ext.define('RallyPokerApp', {
           if ((this.tpl.whoVoted[data.User._ref] == null) || timestamp > this.tpl.whoVoted[data.User._ref].when) {
             this.tpl.whoVoted[data.User._ref] = {
               when: timestamp,
-              name: data.User._refObjectName
+              user: data.User._ref,
+              name: data.User._refObjectName,
+              vote: data.Message
             };
           }
         }
@@ -303,7 +306,7 @@ Ext.define('RallyPokerApp', {
           for (k in _ref) {
             V = _ref[k];
             if (k === this.tpl.accountRef) {
-              this.tpl.accountVoted = true;
+              this.tpl.accountVoted = V.vote;
             }
             if (this.tpl.whoVoted.hasOwnProperty(k)) {
               whenVoted.push(V.when);
@@ -322,9 +325,10 @@ Ext.define('RallyPokerApp', {
       },
       listeners: {
         refresh: function() {
-          if (!this.tpl.accountVoted) {
+          if (this.tpl.processed) {
             Ext.create('RallyPokerApp.EstimateSelector', {
-              renderTo: Ext.query('#messageaddnew')[0]
+              renderTo: Ext.query('#messageaddnew')[0],
+              selectedValue: this.tpl.accountVoted
             });
           }
         }
@@ -340,6 +344,7 @@ Ext.define('RallyPokerApp.EstimateSelector', {
   cls: 'estimateselector',
   items: [],
   config: {
+    selectedValue: false,
     deck: [
       {
         value: 00,
@@ -380,47 +385,63 @@ Ext.define('RallyPokerApp.EstimateSelector', {
       }
     ]
   },
+  _onCardClick: function(e, t) {
+    var App, compiled, message, record;
+
+    App = Ext.getCmp('RallyPokerApp');
+    message = [new Date().getTime(), this.config.accountId, Ext.getCmp(t.id).config.value];
+    compiled = App.PokerMessage.compile(message, App.Base62.encode);
+    record = Ext.create(App.models['conversationpost']);
+    record.set({
+      Artifact: App.CurrentStory.data.keys[0],
+      User: this.config.accountId,
+      Text: 'Pointed this story with RallyPoker.<span style="display:none">' + encodeURIComponent(compiled) + '<\/span>'
+    });
+    record.save({
+      failure: function(b, o) {
+        debugger;        alert('it borked :(');
+      }
+    });
+  },
+  _encode: function(val, key) {
+    return (val + key) % this.config.deck.length;
+  },
+  _decode: function(msg, key) {
+    return this.config.deck[(msg - key) % this.config.deck.length].label;
+  },
   constructor: function(config) {
-    var c, _i, _len, _onCardClick, _ref,
-      _this = this;
+    var c, _i, _len, _ref;
 
     this.mergeConfig(config);
-    _onCardClick = function(e, t) {
-      var compiled, message, record, userId;
-
-      _this = Ext.getCmp('RallyPokerApp');
-      userId = _this.getContext().getUser().ObjectID;
-      message = [new Date().getTime(), userId, Ext.getCmp(t.id).config.value];
-      compiled = _this.PokerMessage.compile(message, _this.Base62.encode);
-      record = Ext.create(_this.models['conversationpost']);
-      record.set({
-        Artifact: _this.CurrentStory.data.keys[0],
-        User: userId,
-        Text: 'Pointed this story with RallyPoker.<span style="display:none">' + encodeURIComponent(compiled) + '<\/span>'
-      });
-      record.save({
-        failure: function(b, o) {
-          debugger;          alert('it borked :(');
-        }
-      });
-    };
-    _ref = this.config.deck;
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      c = _ref[_i];
+    this.config.accountId = Rally.environment.getContext().getUser().ObjectID;
+    if (config.selectedValue) {
       this.items.push({
         xtype: 'component',
-        id: 'pokercard-' + c.value,
-        cls: 'pokercard',
-        html: c.label,
-        config: c,
-        listeners: {
-          click: {
-            element: 'el',
-            fn: _onCardClick
-          }
-        }
+        html: '<h3>You voted: ' + this._decode(config.selectedValue, this.config.accountId.toString().slice(-1)) + '</h3>'
       });
+    } else {
+      this.items.push({
+        xtype: 'component',
+        html: '<h3>Cast your vote</h3>'
+      });
+      _ref = config.deck;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        c = _ref[_i];
+        this.items.push({
+          xtype: 'component',
+          id: 'pokercard-' + c.value,
+          cls: 'pokercard',
+          html: c.label,
+          config: c,
+          listeners: {
+            click: {
+              element: 'el',
+              fn: this._onCardClick
+            }
+          }
+        });
+      }
     }
-    this.callParent([this.config]);
+    this.callParent([config]);
   }
 });

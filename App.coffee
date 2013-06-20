@@ -271,10 +271,7 @@ Ext.define 'RallyPokerApp', {
             '</tpl>'
                 '</ul>',
               '</div>',
-              '<div id="messageaddnew"><h3>',
-            '<tpl if="!this.accountVoted">Cast your vote</tpl>',
-            '<tpl if="this.accountVoted">You voted: {Message}</tpl>',
-              '</h3></div>',
+              '<div id="messageaddnew"></div>',
           '</tpl>',
         '</tpl>',
         '<tpl for=".">',
@@ -288,8 +285,10 @@ Ext.define 'RallyPokerApp', {
                   '<p class="discussionitem-text">{Text}</p>',
                 '</div>',
           '</tpl>',
-          '<tpl if="xindex == xcount && this.shownDiscussion">',
+          '<tpl if="xindex == xcount">{% this.processed = true %}',
+            '<tpl if="this.shownDiscussion">',
               '</div>',
+            '</tpl>',
           '</tpl>',
         '</tpl>',
         {
@@ -298,6 +297,7 @@ Ext.define 'RallyPokerApp', {
           shownMessages: false
           shownDiscussion: false
           whoVoted: {}
+          processed: false
         }
       )
       prepareData: (data, index, record) ->
@@ -306,13 +306,15 @@ Ext.define 'RallyPokerApp', {
           if not @tpl.whoVoted[data.User._ref]? or timestamp > @tpl.whoVoted[data.User._ref].when
             @tpl.whoVoted[data.User._ref] =
               when: timestamp
+              user: data.User._ref
               name: data.User._refObjectName
+              vote: data.Message
         if index + 1 == @store.data.length
           `var whenVoted = [], voteMap = {}`
           data.whoVoted = []
           # debugger
           for k, V of @tpl.whoVoted
-            @tpl.accountVoted = true if k == @tpl.accountRef
+            @tpl.accountVoted = V.vote if k == @tpl.accountRef
             if @tpl.whoVoted.hasOwnProperty k
               whenVoted.push V.when
               voteMap[V.when] = V
@@ -329,8 +331,10 @@ Ext.define 'RallyPokerApp', {
         refresh: () ->
           # debugger
           # console.log @tpl.shownMessages if @store.data.items.length
-          # @todo add constructor parameter to switch display if user has voted.
-          Ext.create 'RallyPokerApp.EstimateSelector', {renderTo: Ext.query('#messageaddnew')[0]} if not @tpl.accountVoted
+          if @tpl.processed
+            Ext.create 'RallyPokerApp.EstimateSelector',
+              renderTo: Ext.query('#messageaddnew')[0]
+              selectedValue: @tpl.accountVoted
           return
       itemSelector: 'div.discussionitem'
     }
@@ -345,12 +349,13 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
   # constructor uses config to populate items.
   items: []
   config:
+    selectedValue: false
     # @cfg {Array} (required)
     # a list of values that can be used as story estimates
     deck: [
       { value: `00`, label: '?' }
       { value: `01`, label: '0' }
-      { value: `02`, label: '&#189;' } # "½"?
+      { value: `02`, label: '&#189;' } # "½"
       { value: `03`, label: '1' }
       { value: `04`, label: '2' }
       { value: `05`, label: '3' }
@@ -366,44 +371,56 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
       # { value: `017`, label: '' }
     ]
 
+  # helper function bound to card's click event.
+  _onCardClick: (e, t) ->
+    App = Ext.getCmp 'RallyPokerApp'
+    message = [new Date().getTime(), @config.accountId, Ext.getCmp(t.id).config.value]
+    compiled = App.PokerMessage.compile message, App.Base62.encode
+    record = Ext.create App.models['conversationpost']
+    record.set
+      Artifact: App.CurrentStory.data.keys[0]
+      User: @config.accountId
+      Text: 'Pointed this story with RallyPoker.<span style="display:none">' + encodeURIComponent(compiled) + '<\/span>'
+    # debugger;
+    record.save {
+      # success: (b, o) ->
+      #   return
+      failure: (b, o) ->
+        debugger;
+        alert 'it borked :('
+        return
+    }
+    return
+
+  # simple caesar cipher to obfuscate card values using last digit of user id.
+  _encode: (val, key) -> (val + key) % @config.deck.length
+  _decode: (msg, key) -> @config.deck[(msg - key) % @config.deck.length].label
+
   constructor: (config) ->
     @mergeConfig config
+    @config.accountId = Rally.environment.getContext().getUser().ObjectID
 
-    # helper function bound to card's click event.
-    _onCardClick = (e, t) =>
-      _this = Ext.getCmp 'RallyPokerApp'
-      userId = @getContext().getUser().ObjectID
-      message = [new Date().getTime(), userId, Ext.getCmp(t.id).config.value]
-      compiled = @PokerMessage.compile message, @Base62.encode
-      record = Ext.create @models['conversationpost']
-      record.set {
-        Artifact: @CurrentStory.data.keys[0]
-        User: userId
-        Text: 'Pointed this story with RallyPoker.<span style="display:none">' + encodeURIComponent(compiled) + '<\/span>'
-      }
-      # debugger;
-      record.save {
-        # success: (b, o) ->
-        #   return
-        failure: (b, o) ->
-          debugger;
-          alert 'it borked :('
-          return
-      }
-      return
-    # initialize cards.
-    for c in @config.deck
+    if config.selectedValue
       @items.push
         xtype: 'component'
-        id: 'pokercard-' + c.value
-        cls: 'pokercard'
-        html: c.label
-        config: c
-        listeners:
-          click:
-            element: 'el'
-            fn: _onCardClick
+        html: '<h3>You voted: ' + @_decode(config.selectedValue, @config.accountId.toString().slice(-1)) + '</h3>'
+    else
+      @items.push
+        xtype: 'component'
+        html: '<h3>Cast your vote</h3>'
+      # initialize cards.
+      for c in config.deck
+        @items.push
+          xtype: 'component'
+          id: 'pokercard-' + c.value
+          cls: 'pokercard'
+          html: c.label
+          config: c
+          listeners:
+            click:
+              element: 'el'
+              fn: @_onCardClick
 
-    @callParent [@config]
+    @callParent [config]
     return
 }
