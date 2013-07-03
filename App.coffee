@@ -155,13 +155,23 @@ Ext.define 'RallyPokerApp', {
         click:
           element: 'el'
           fn: (e, t) =>
-            StoryListItem = Ext.get(t).findParent '.storylistitem'
-            storyListItemName = Ext.get(StoryListItem).child('.storylistitem-id').getHTML()
+            StoryListItem = Ext.get(Ext.get(t).findParent '.storylistitem')
+
+            storyListItemName = StoryListItem.child('.storylistitem-id').getHTML()
             Ext.get('storytitle').update storyListItemName
+
+            storyListItemId = StoryListItem.getAttribute 'data-id'
             @CurrentStory.load {
               filters: [{
                 property: 'ObjectID'
-                value: Ext.get(t).findParent('.storylistitem').getAttribute 'data-id'
+                value: storyListItemId
+              }]
+            }
+            # always load the store so that its view is reprocessed.
+            @DiscussionsStore.load {
+              filters: [{
+                property: 'Artifact.ObjectID'
+                value: storyListItemId
               }]
             }
             @getLayout().setActiveItem 'storyview'
@@ -177,17 +187,6 @@ Ext.define 'RallyPokerApp', {
       model: 'userstory'
       limit: 1,
       fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
-      listeners:
-        load: (store, result, success) =>
-          if result[0].data.Discussion.length
-            @DiscussionsStore.load {
-              filters: [{
-                # You gotta love it when a random guess comes together!
-                property: 'Artifact.ObjectID'
-                value: result[0].data.ObjectID
-              }]
-            }
-          return
     }
     @StoryPage = Ext.create 'Ext.view.View', {
       store: @CurrentStory
@@ -246,13 +245,6 @@ Ext.define 'RallyPokerApp', {
     @DiscussionsStore = Ext.create 'Rally.data.WsapiDataStore', {
       model: 'conversationpost'
       fetch: ['User', 'CreationDate', 'Text', 'Message']
-      # listeners:
-      #   load: (store, result, success) =>
-      #     console.log store.model.prototype.fields.items
-      #     console.log result[0].data
-      #     debugger
-      #     @MessageAddNew.render Ext.get('messageaddnew')
-      #     return
     }
     @DiscussionThread = Ext.create 'Ext.view.View', {
       store: @DiscussionsStore
@@ -271,9 +263,9 @@ Ext.define 'RallyPokerApp', {
             '</tpl>'
                 '</ul>',
               '</div>',
-              '<div id="messageaddnew"></div>',
           '</tpl>',
         '</tpl>',
+        '<div id="messageaddnew"></div>'
         '<tpl for=".">',
           '<tpl if="Message === false">',
             '<tpl if="!this.shownDiscussion">{% this.shownDiscussion = true %}',
@@ -285,10 +277,8 @@ Ext.define 'RallyPokerApp', {
                   '<p class="discussionitem-text">{Text}</p>',
                 '</div>',
           '</tpl>',
-          '<tpl if="xindex == xcount">{% this.processed = true %}',
-            '<tpl if="this.shownDiscussion">',
+          '<tpl if="xindex == xcount && this.shownDiscussion">',
               '</div>',
-            '</tpl>',
           '</tpl>',
         '</tpl>',
         {
@@ -297,7 +287,6 @@ Ext.define 'RallyPokerApp', {
           shownMessages: false
           shownDiscussion: false
           whoVoted: {}
-          processed: false
         }
       )
       prepareData: (data, index, record) ->
@@ -329,12 +318,9 @@ Ext.define 'RallyPokerApp', {
       listeners:
         # afterRender: () ->
         refresh: () ->
-          # debugger
-          # console.log @tpl.shownMessages if @store.data.items.length
-          if @tpl.processed
-            Ext.create 'RallyPokerApp.EstimateSelector',
-              renderTo: Ext.query('#messageaddnew')[0]
-              selectedValue: @tpl.accountVoted
+          Ext.create 'RallyPokerApp.EstimateSelector',
+            renderTo: Ext.query('#messageaddnew')[0]
+            selectedValue: @tpl.accountVoted
           return
       itemSelector: 'div.discussionitem'
     }
@@ -409,13 +395,14 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
         xtype: 'component'
         html: '<h3>Cast your vote</h3>'
       # initialize cards.
-      for c in config.deck
+      # debugger
+      for C in @config.deck
         @items.push
           xtype: 'component'
-          id: 'pokercard-' + c.value
+          id: 'pokercard-' + C.value
           cls: 'pokercard'
-          html: c.label
-          config: c
+          html: C.label
+          config: C
           listeners:
             click:
               element: 'el'

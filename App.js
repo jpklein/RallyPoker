@@ -192,16 +192,25 @@ Ext.define('RallyPokerApp', {
         click: {
           element: 'el',
           fn: function(e, t) {
-            var StoryListItem, storyListItemName;
+            var StoryListItem, storyListItemId, storyListItemName;
 
-            StoryListItem = Ext.get(t).findParent('.storylistitem');
-            storyListItemName = Ext.get(StoryListItem).child('.storylistitem-id').getHTML();
+            StoryListItem = Ext.get(Ext.get(t).findParent('.storylistitem'));
+            storyListItemName = StoryListItem.child('.storylistitem-id').getHTML();
             Ext.get('storytitle').update(storyListItemName);
+            storyListItemId = StoryListItem.getAttribute('data-id');
             _this.CurrentStory.load({
               filters: [
                 {
                   property: 'ObjectID',
-                  value: Ext.get(t).findParent('.storylistitem').getAttribute('data-id')
+                  value: storyListItemId
+                }
+              ]
+            });
+            _this.DiscussionsStore.load({
+              filters: [
+                {
+                  property: 'Artifact.ObjectID',
+                  value: storyListItemId
                 }
               ]
             });
@@ -217,21 +226,7 @@ Ext.define('RallyPokerApp', {
     this.CurrentStory = Ext.create('Rally.data.WsapiDataStore', {
       model: 'userstory',
       limit: 1,
-      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion'],
-      listeners: {
-        load: function(store, result, success) {
-          if (result[0].data.Discussion.length) {
-            _this.DiscussionsStore.load({
-              filters: [
-                {
-                  property: 'Artifact.ObjectID',
-                  value: result[0].data.ObjectID
-                }
-              ]
-            });
-          }
-        }
-      }
+      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
     });
     this.StoryPage = Ext.create('Ext.view.View', {
       store: this.CurrentStory,
@@ -277,13 +272,12 @@ Ext.define('RallyPokerApp', {
     });
     this.DiscussionThread = Ext.create('Ext.view.View', {
       store: this.DiscussionsStore,
-      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '<tpl for="whoVoted">', '<li>{name} at {when}</li>', '</tpl>', '</ul>', '</div>', '<div id="messageaddnew"></div>', '</tpl>', '</tpl>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount">{% this.processed = true %}', '<tpl if="this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', '</tpl>', {
+      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '<tpl for="whoVoted">', '<li>{name} at {when}</li>', '</tpl>', '</ul>', '</div>', '</tpl>', '</tpl>', '<div id="messageaddnew"></div>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount && this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', {
         accountRef: "/user/" + Rally.environment.getContext().getUser().ObjectID,
         accountVoted: false,
         shownMessages: false,
         shownDiscussion: false,
-        whoVoted: {},
-        processed: false
+        whoVoted: {}
       }),
       prepareData: function(data, index, record) {
         var D, V, k, _i, _len, _ref;
@@ -325,12 +319,10 @@ Ext.define('RallyPokerApp', {
       },
       listeners: {
         refresh: function() {
-          if (this.tpl.processed) {
-            Ext.create('RallyPokerApp.EstimateSelector', {
-              renderTo: Ext.query('#messageaddnew')[0],
-              selectedValue: this.tpl.accountVoted
-            });
-          }
+          Ext.create('RallyPokerApp.EstimateSelector', {
+            renderTo: Ext.query('#messageaddnew')[0],
+            selectedValue: this.tpl.accountVoted
+          });
         }
       },
       itemSelector: 'div.discussionitem'
@@ -410,7 +402,7 @@ Ext.define('RallyPokerApp.EstimateSelector', {
     return this.config.deck[(msg - key) % this.config.deck.length].label;
   },
   constructor: function(config) {
-    var c, _i, _len, _ref;
+    var C, _i, _len, _ref;
 
     this.mergeConfig(config);
     this.config.accountId = Rally.environment.getContext().getUser().ObjectID;
@@ -424,15 +416,15 @@ Ext.define('RallyPokerApp.EstimateSelector', {
         xtype: 'component',
         html: '<h3>Cast your vote</h3>'
       });
-      _ref = config.deck;
+      _ref = this.config.deck;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        c = _ref[_i];
+        C = _ref[_i];
         this.items.push({
           xtype: 'component',
-          id: 'pokercard-' + c.value,
+          id: 'pokercard-' + C.value,
           cls: 'pokercard',
-          html: c.label,
-          config: c,
+          html: C.label,
+          config: C,
           listeners: {
             click: {
               element: 'el',
