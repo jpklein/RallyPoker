@@ -319,6 +319,7 @@ Ext.define 'RallyPokerApp', {
         # afterRender: () ->
         refresh: () ->
           Ext.create 'RallyPokerApp.EstimateSelector',
+            cipher: Rally.environment.getContext().getUser().ObjectID % 10
             renderTo: Ext.query('#messageaddnew')[0]
             selectedValue: @tpl.accountVoted
           return
@@ -335,6 +336,7 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
   # constructor uses config to populate items.
   items: []
   config:
+    cipher: 0
     selectedValue: false
     # @cfg {Array} (required)
     # a list of values that can be used as story estimates
@@ -379,8 +381,8 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
     return
 
   # simple caesar cipher to obfuscate card values using last digit of user id.
-  _encode: (val, key) -> (val + key) % @config.deck.length
-  _decode: (msg, key) -> @config.deck[(msg - key) % @config.deck.length].label
+  _encode: (v) -> (v + @config.cipher) % @config.deck.length
+  _decode: (v) -> @config.deck[if (v = (v - @config.cipher) % @config.deck.length) < 0 then @config.deck.length + v else v].label
 
   constructor: (config) ->
     @mergeConfig config
@@ -389,7 +391,7 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
     if config.selectedValue
       @items.push
         xtype: 'component'
-        html: '<h3>You voted: ' + @_decode(config.selectedValue, @config.accountId.toString().slice(-1)) + '</h3>'
+        html: '<h3>You voted: ' + @_decode(config.selectedValue) + '</h3>'
     else
       @items.push
         xtype: 'component'

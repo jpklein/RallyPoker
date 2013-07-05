@@ -320,6 +320,7 @@ Ext.define('RallyPokerApp', {
       listeners: {
         refresh: function() {
           Ext.create('RallyPokerApp.EstimateSelector', {
+            cipher: Rally.environment.getContext().getUser().ObjectID % 10,
             renderTo: Ext.query('#messageaddnew')[0],
             selectedValue: this.tpl.accountVoted
           });
@@ -336,6 +337,7 @@ Ext.define('RallyPokerApp.EstimateSelector', {
   cls: 'estimateselector',
   items: [],
   config: {
+    cipher: 0,
     selectedValue: false,
     deck: [
       {
@@ -395,11 +397,11 @@ Ext.define('RallyPokerApp.EstimateSelector', {
       }
     });
   },
-  _encode: function(val, key) {
-    return (val + key) % this.config.deck.length;
+  _encode: function(v) {
+    return (v + this.config.cipher) % this.config.deck.length;
   },
-  _decode: function(msg, key) {
-    return this.config.deck[(msg - key) % this.config.deck.length].label;
+  _decode: function(v) {
+    return this.config.deck[(v = (v - this.config.cipher) % this.config.deck.length) < 0 ? this.config.deck.length + v : v].label;
   },
   constructor: function(config) {
     var C, _i, _len, _ref;
@@ -409,7 +411,7 @@ Ext.define('RallyPokerApp.EstimateSelector', {
     if (config.selectedValue) {
       this.items.push({
         xtype: 'component',
-        html: '<h3>You voted: ' + this._decode(config.selectedValue, this.config.accountId.toString().slice(-1)) + '</h3>'
+        html: '<h3>You voted: ' + this._decode(config.selectedValue) + '</h3>'
       });
     } else {
       this.items.push({
