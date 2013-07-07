@@ -314,14 +314,18 @@ Ext.define 'RallyPokerApp', {
             data.whoVoted.push voteMap[k]
           # console.log whenVoted
           # console.log @tpl.whenVoted
+        # console.log 'prepareData. accountVoted = ' + @tpl.accountVoted
         data
       listeners:
         # afterRender: () ->
         refresh: () ->
-          Ext.create 'RallyPokerApp.EstimateSelector',
+          @StoryEstimator = Ext.create 'RallyPokerApp.EstimateSelector',
             cipher: Rally.environment.getContext().getUser().ObjectID % 10
             renderTo: Ext.query('#messageaddnew')[0]
-            selectedValue: @tpl.accountVoted
+          # @tpl.accountVoted = 3 if @tpl.accountVoted == false
+          # console.log 'refresh. accountVoted = ' + @tpl.accountVoted
+          @StoryEstimator.update
+            vote: @tpl.accountVoted
           return
       itemSelector: 'div.discussionitem'
     }
@@ -334,10 +338,9 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
   extend: 'Ext.Container'
   cls: 'estimateselector'
   # constructor uses config to populate items.
-  items: []
+  # items: []
   config:
     cipher: 0
-    selectedValue: false
     # @cfg {Array} (required)
     # a list of values that can be used as story estimates
     deck: [
@@ -359,6 +362,58 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
       # { value: `017`, label: '' }
     ]
 
+  constructor: (config) ->
+    @mergeConfig config
+    # debugger
+    @callParent [config]
+    return
+
+  # update gets called before the template is processed.
+  update: (data) ->
+    if data.vote
+      # console.log 'update. vote = ' + data.vote
+      # values in 'data' passed by reference and later used by template.
+      data.vote = @_decode(data.vote)
+      @callParent [data]
+    else
+      # console.log 'update. no vote'
+      @callParent [data]
+      # initialize cards.
+      # @todo any way to create these on initComponent and show/hide instead?
+      l = Ext.query('#messageaddnew')[0]
+      for C in @config.deck
+        Ext.create 'Ext.Component',
+          id: 'pokercard-' + C.value
+          cls: 'pokercard'
+          html: C.label
+          config: C
+          listeners:
+            click:
+              element: 'el'
+              fn: @_onCardClick
+          renderTo: l
+    return
+
+  tpl: new Ext.XTemplate(
+    '<tpl for=".">',
+      '<tpl if="vote">',
+        '<h3>You voted: {vote}</h3>',
+      '<tpl else>',
+        '<h3>Cast your vote</h3>',
+      '</tpl>', 
+    '</tpl>',
+  )
+
+  # listeners:
+  #   beforerender: () ->
+  #     # debugger
+  #     console.log("beforerender. cipher = " + @config.cipher)
+  #     return
+
+  # simple caesar cipher to obfuscate card values using last digit of user id.
+  _encode: (v) -> (v + @config.cipher) % @config.deck.length
+  _decode: (v) -> @config.deck[if (v = (v - @config.cipher) % @config.deck.length) < 0 then @config.deck.length + v else v].label
+
   # helper function bound to card's click event.
   _onCardClick: (e, t) ->
     App = Ext.getCmp 'RallyPokerApp'
@@ -375,41 +430,8 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
       #   return
       failure: (b, o) ->
         debugger;
-        alert 'it borked :('
+        alert 'Error submitting your estimate.'
         return
     }
-    return
-
-  # simple caesar cipher to obfuscate card values using last digit of user id.
-  _encode: (v) -> (v + @config.cipher) % @config.deck.length
-  _decode: (v) -> @config.deck[if (v = (v - @config.cipher) % @config.deck.length) < 0 then @config.deck.length + v else v].label
-
-  constructor: (config) ->
-    @mergeConfig config
-    @config.accountId = Rally.environment.getContext().getUser().ObjectID
-
-    if config.selectedValue
-      @items.push
-        xtype: 'component'
-        html: '<h3>You voted: ' + @_decode(config.selectedValue) + '</h3>'
-    else
-      @items.push
-        xtype: 'component'
-        html: '<h3>Cast your vote</h3>'
-      # initialize cards.
-      # debugger
-      for C in @config.deck
-        @items.push
-          xtype: 'component'
-          id: 'pokercard-' + C.value
-          cls: 'pokercard'
-          html: C.label
-          config: C
-          listeners:
-            click:
-              element: 'el'
-              fn: @_onCardClick
-
-    @callParent [config]
     return
 }

@@ -319,10 +319,12 @@ Ext.define('RallyPokerApp', {
       },
       listeners: {
         refresh: function() {
-          Ext.create('RallyPokerApp.EstimateSelector', {
+          this.StoryEstimator = Ext.create('RallyPokerApp.EstimateSelector', {
             cipher: Rally.environment.getContext().getUser().ObjectID % 10,
-            renderTo: Ext.query('#messageaddnew')[0],
-            selectedValue: this.tpl.accountVoted
+            renderTo: Ext.query('#messageaddnew')[0]
+          });
+          this.StoryEstimator.update({
+            vote: this.tpl.accountVoted
           });
         }
       },
@@ -335,10 +337,8 @@ Ext.define('RallyPokerApp', {
 Ext.define('RallyPokerApp.EstimateSelector', {
   extend: 'Ext.Container',
   cls: 'estimateselector',
-  items: [],
   config: {
     cipher: 0,
-    selectedValue: false,
     deck: [
       {
         value: 00,
@@ -379,6 +379,45 @@ Ext.define('RallyPokerApp.EstimateSelector', {
       }
     ]
   },
+  constructor: function(config) {
+    this.mergeConfig(config);
+    this.callParent([config]);
+  },
+  update: function(data) {
+    var C, l, _i, _len, _ref;
+
+    if (data.vote) {
+      data.vote = this._decode(data.vote);
+      this.callParent([data]);
+    } else {
+      this.callParent([data]);
+      l = Ext.query('#messageaddnew')[0];
+      _ref = this.config.deck;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        C = _ref[_i];
+        Ext.create('Ext.Component', {
+          id: 'pokercard-' + C.value,
+          cls: 'pokercard',
+          html: C.label,
+          config: C,
+          listeners: {
+            click: {
+              element: 'el',
+              fn: this._onCardClick
+            }
+          },
+          renderTo: l
+        });
+      }
+    }
+  },
+  tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="vote">', '<h3>You voted: {vote}</h3>', '<tpl else>', '<h3>Cast your vote</h3>', '</tpl>', '</tpl>'),
+  _encode: function(v) {
+    return (v + this.config.cipher) % this.config.deck.length;
+  },
+  _decode: function(v) {
+    return this.config.deck[(v = (v - this.config.cipher) % this.config.deck.length) < 0 ? this.config.deck.length + v : v].label;
+  },
   _onCardClick: function(e, t) {
     var App, compiled, message, record;
 
@@ -393,49 +432,8 @@ Ext.define('RallyPokerApp.EstimateSelector', {
     });
     record.save({
       failure: function(b, o) {
-        debugger;        alert('it borked :(');
+        debugger;        alert('Error submitting your estimate.');
       }
     });
-  },
-  _encode: function(v) {
-    return (v + this.config.cipher) % this.config.deck.length;
-  },
-  _decode: function(v) {
-    return this.config.deck[(v = (v - this.config.cipher) % this.config.deck.length) < 0 ? this.config.deck.length + v : v].label;
-  },
-  constructor: function(config) {
-    var C, _i, _len, _ref;
-
-    this.mergeConfig(config);
-    this.config.accountId = Rally.environment.getContext().getUser().ObjectID;
-    if (config.selectedValue) {
-      this.items.push({
-        xtype: 'component',
-        html: '<h3>You voted: ' + this._decode(config.selectedValue) + '</h3>'
-      });
-    } else {
-      this.items.push({
-        xtype: 'component',
-        html: '<h3>Cast your vote</h3>'
-      });
-      _ref = this.config.deck;
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        C = _ref[_i];
-        this.items.push({
-          xtype: 'component',
-          id: 'pokercard-' + C.value,
-          cls: 'pokercard',
-          html: C.label,
-          config: C,
-          listeners: {
-            click: {
-              element: 'el',
-              fn: this._onCardClick
-            }
-          }
-        });
-      }
-    }
-    this.callParent([config]);
   }
 });
