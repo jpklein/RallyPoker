@@ -398,9 +398,9 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
   tpl: new Ext.XTemplate(
     '<tpl for=".">',
       '<tpl if="vote">',
-        '<h3>You voted: {vote}</h3>',
+        '<h3>Your estimate: {vote}</h3>',
       '<tpl else>',
-        '<h3>Cast your vote</h3>',
+        '<h3>Select an estimate</h3>',
       '</tpl>', 
     '</tpl>',
   )
@@ -429,9 +429,9 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
       User: @config.accountId
       Text: 'Pointed this story with RallyPoker. <span style="display:none">' + encodeURIComponent(pokerMessage) + '<\/span>'
     # Record.save
-    #   success: (b, o) ->
-    @update
-      vote: selectedValue
+    #   success: (b, o) =>
+      @update
+        vote: selectedValue
     #     return
     #   failure: (b, o) ->
     #     # debugger

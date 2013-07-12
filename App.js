@@ -414,7 +414,7 @@ Ext.define('RallyPokerApp.EstimateSelector', {
       }
     }
   },
-  tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="vote">', '<h3>You voted: {vote}</h3>', '<tpl else>', '<h3>Cast your vote</h3>', '</tpl>', '</tpl>'),
+  tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="vote">', '<h3>Your estimate: {vote}</h3>', '<tpl else>', '<h3>Select an estimate</h3>', '</tpl>', '</tpl>'),
   _encipher: function(v) {
     return (v + this.config.cipher) % this.config.deck.length;
   },
@@ -433,9 +433,8 @@ Ext.define('RallyPokerApp.EstimateSelector', {
       Artifact: App.CurrentStory.data.keys[0],
       User: this.config.accountId,
       Text: 'Pointed this story with RallyPoker. <span style="display:none">' + encodeURIComponent(pokerMessage) + '<\/span>'
-    });
-    this.update({
+    }, this.update({
       vote: selectedValue
-    });
+    }));
   }
 });
