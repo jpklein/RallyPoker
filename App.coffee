@@ -265,7 +265,7 @@ Ext.define 'RallyPokerApp', {
               '</div>',
           '</tpl>',
         '</tpl>',
-        '<div id="messageaddnew"></div>'
+        '<div class="estimateselector"></div>'
         '<tpl for=".">',
           '<tpl if="Message === false">',
             '<tpl if="!this.shownDiscussion">{% this.shownDiscussion = true %}',
@@ -321,7 +321,7 @@ Ext.define 'RallyPokerApp', {
         refresh: () ->
           @StoryEstimator = Ext.create 'RallyPokerApp.EstimateSelector',
             cipher: Rally.environment.getContext().getUser().ObjectID % 10
-            renderTo: Ext.query('#messageaddnew')[0]
+            renderTo: Ext.query('.estimateselector')[0]
           # @tpl.accountVoted = 3 if @tpl.accountVoted == false
           # console.log 'refresh. accountVoted = ' + @tpl.accountVoted
           @StoryEstimator.update
@@ -336,7 +336,7 @@ Ext.define 'RallyPokerApp', {
 
 Ext.define 'RallyPokerApp.EstimateSelector', {
   extend: 'Ext.Container'
-  cls: 'estimateselector'
+  # cls: 'estimateselector'
   # constructor uses config to populate items.
   # items: []
   config:
@@ -380,7 +380,6 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
       @callParent [data]
       # initialize cards.
       # @todo any way to create these on initComponent and show/hide instead?
-      l = Ext.query('#messageaddnew')[0]
       for C in @config.deck
         Ext.create 'Ext.Component',
           id: 'pokercard-' + C.value
@@ -391,7 +390,8 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
             click:
               element: 'el'
               fn: @_onCardClick
-          renderTo: l
+              scope: @
+          renderTo: @.getEl()
     return
 
   tpl: new Ext.XTemplate(
@@ -417,21 +417,23 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
   # helper function bound to card's click event.
   _onCardClick: (e, t) ->
     App = Ext.getCmp 'RallyPokerApp'
-    message = [new Date().getTime(), @config.accountId, Ext.getCmp(t.id).config.value]
-    compiled = App.PokerMessage.compile message, App.Base62.encode
-    record = Ext.create App.models['conversationpost']
-    record.set
+    cardValue = Ext.getCmp(t.id).config.value
+    Message = [new Date().getTime(), @config.accountId, cardValue]
+    pokerMessage = App.PokerMessage.compile Message, App.Base62.encode
+    Record = Ext.create App.models['conversationpost']
+    Record.set
       Artifact: App.CurrentStory.data.keys[0]
       User: @config.accountId
-      Text: 'Pointed this story with RallyPoker.<span style="display:none">' + encodeURIComponent(compiled) + '<\/span>'
-    # debugger;
-    record.save {
-      # success: (b, o) ->
-      #   return
-      failure: (b, o) ->
-        debugger;
-        alert 'Error submitting your estimate.'
-        return
-    }
+      Text: 'Pointed this story with RallyPoker. <span style="display:none">' + encodeURIComponent(pokerMessage) + '<\/span>'
+    # Record.save
+    #   success: (b, o) ->
+    @update
+      vote: cardValue
+    #     return
+    #   failure: (b, o) ->
+    #     # debugger
+    #     alert 'Error submitting your estimate. Please try again.'
+    #     return
+
     return
 }
