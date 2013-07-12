@@ -320,7 +320,7 @@ Ext.define('RallyPokerApp', {
       listeners: {
         refresh: function() {
           this.StoryEstimator = Ext.create('RallyPokerApp.EstimateSelector', {
-            cipher: Rally.environment.getContext().getUser().ObjectID % 10,
+            accountId: Rally.environment.getContext().getUser().ObjectID,
             renderTo: Ext.query('.estimateselector')[0]
           });
           this.StoryEstimator.update({
@@ -337,6 +337,7 @@ Ext.define('RallyPokerApp', {
 Ext.define('RallyPokerApp.EstimateSelector', {
   extend: 'Ext.Container',
   config: {
+    accountId: 0,
     cipher: 0,
     deck: [
       {
@@ -380,13 +381,16 @@ Ext.define('RallyPokerApp.EstimateSelector', {
   },
   constructor: function(config) {
     this.mergeConfig(config);
+    if (config.accountId != null) {
+      this.config.cipher = config.accountId % 10;
+    }
     this.callParent([config]);
   },
   update: function(data) {
     var C, _i, _len, _ref;
 
     if (data.vote) {
-      data.vote = this._decode(data.vote);
+      data.vote = this._decipher(data.vote);
       this.callParent([data]);
     } else {
       this.callParent([data]);
@@ -411,18 +415,18 @@ Ext.define('RallyPokerApp.EstimateSelector', {
     }
   },
   tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="vote">', '<h3>You voted: {vote}</h3>', '<tpl else>', '<h3>Cast your vote</h3>', '</tpl>', '</tpl>'),
-  _encode: function(v) {
+  _encipher: function(v) {
     return (v + this.config.cipher) % this.config.deck.length;
   },
-  _decode: function(v) {
+  _decipher: function(v) {
     return this.config.deck[(v = (v - this.config.cipher) % this.config.deck.length) < 0 ? this.config.deck.length + v : v].label;
   },
   _onCardClick: function(e, t) {
-    var App, Message, Record, cardValue, pokerMessage;
+    var App, Message, Record, pokerMessage, selectedValue;
 
+    selectedValue = this._encipher(Ext.getCmp(t.id).config.value);
+    Message = [new Date().getTime(), this.config.accountId, selectedValue];
     App = Ext.getCmp('RallyPokerApp');
-    cardValue = Ext.getCmp(t.id).config.value;
-    Message = [new Date().getTime(), this.config.accountId, cardValue];
     pokerMessage = App.PokerMessage.compile(Message, App.Base62.encode);
     Record = Ext.create(App.models['conversationpost']);
     Record.set({
@@ -431,7 +435,7 @@ Ext.define('RallyPokerApp.EstimateSelector', {
       Text: 'Pointed this story with RallyPoker. <span style="display:none">' + encodeURIComponent(pokerMessage) + '<\/span>'
     });
     this.update({
-      vote: cardValue
+      vote: selectedValue
     });
   }
 });

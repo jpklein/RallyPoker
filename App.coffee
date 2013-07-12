@@ -320,7 +320,7 @@ Ext.define 'RallyPokerApp', {
         # afterRender: () ->
         refresh: () ->
           @StoryEstimator = Ext.create 'RallyPokerApp.EstimateSelector',
-            cipher: Rally.environment.getContext().getUser().ObjectID % 10
+            accountId: Rally.environment.getContext().getUser().ObjectID
             renderTo: Ext.query('.estimateselector')[0]
           # @tpl.accountVoted = 3 if @tpl.accountVoted == false
           # console.log 'refresh. accountVoted = ' + @tpl.accountVoted
@@ -340,6 +340,7 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
   # constructor uses config to populate items.
   # items: []
   config:
+    accountId: 0
     cipher: 0
     # @cfg {Array} (required)
     # a list of values that can be used as story estimates
@@ -364,7 +365,7 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
 
   constructor: (config) ->
     @mergeConfig config
-    # debugger
+    @config.cipher = config.accountId % 10 if config.accountId?
     @callParent [config]
     return
 
@@ -373,7 +374,7 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
     if data.vote
       # console.log 'update. vote = ' + data.vote
       # values in 'data' passed by reference and later used by template.
-      data.vote = @_decode(data.vote)
+      data.vote = @_decipher(data.vote)
       @callParent [data]
     else
       # console.log 'update. no vote'
@@ -411,15 +412,17 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
   #     return
 
   # simple caesar cipher to obfuscate card values using last digit of user id.
-  _encode: (v) -> (v + @config.cipher) % @config.deck.length
-  _decode: (v) -> @config.deck[if (v = (v - @config.cipher) % @config.deck.length) < 0 then @config.deck.length + v else v].label
+  _encipher: (v) -> (v + @config.cipher) % @config.deck.length
+  _decipher: (v) -> @config.deck[if (v = (v - @config.cipher) % @config.deck.length) < 0 then @config.deck.length + v else v].label
 
   # helper function bound to card's click event.
   _onCardClick: (e, t) ->
+    selectedValue = @_encipher Ext.getCmp(t.id).config.value
+    Message = [new Date().getTime(), @config.accountId, selectedValue]
+
     App = Ext.getCmp 'RallyPokerApp'
-    cardValue = Ext.getCmp(t.id).config.value
-    Message = [new Date().getTime(), @config.accountId, cardValue]
     pokerMessage = App.PokerMessage.compile Message, App.Base62.encode
+
     Record = Ext.create App.models['conversationpost']
     Record.set
       Artifact: App.CurrentStory.data.keys[0]
@@ -428,7 +431,7 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
     # Record.save
     #   success: (b, o) ->
     @update
-      vote: cardValue
+      vote: selectedValue
     #     return
     #   failure: (b, o) ->
     #     # debugger
