@@ -289,6 +289,7 @@ Ext.define 'RallyPokerApp', {
           whoVoted: {}
         }
       )
+      itemSelector: 'div.discussionitem'
       prepareData: (data, index, record) ->
         if data.Message
           `var timestamp = data.CreationDate.getTime()`
@@ -298,7 +299,7 @@ Ext.define 'RallyPokerApp', {
               user: data.User._ref
               name: data.User._refObjectName
               vote: data.Message
-        if index + 1 == @store.data.length
+        if index == @store.data.length - 1
           `var whenVoted = [], voteMap = {}`
           data.whoVoted = []
           # debugger
@@ -317,24 +318,23 @@ Ext.define 'RallyPokerApp', {
         # console.log 'prepareData. accountVoted = ' + @tpl.accountVoted
         data
       listeners:
-        # afterRender: () ->
-        refresh: () ->
-          @StoryEstimator = Ext.create 'RallyPokerApp.EstimateSelector',
+        scope: @
+        refresh: (view) ->
+          StoryEstimator = Ext.create 'EstimateSelector',
+            ParentApp: @
             accountId: Rally.environment.getContext().getUser().ObjectID
             renderTo: Ext.query('.estimateselector')[0]
-          # @tpl.accountVoted = 3 if @tpl.accountVoted == false
-          # console.log 'refresh. accountVoted = ' + @tpl.accountVoted
-          @StoryEstimator.update
-            vote: @tpl.accountVoted
+          # console.log 'refresh. accountVoted = ' + view.tpl.accountVoted
+          StoryEstimator.update
+            vote: view.tpl.accountVoted
           return
-      itemSelector: 'div.discussionitem'
     }
     @down('#storyview').add @DiscussionThread
 
     return
 }
 
-Ext.define 'RallyPokerApp.EstimateSelector', {
+Ext.define 'EstimateSelector', {
   extend: 'Ext.Container'
   # cls: 'estimateselector'
   # constructor uses config to populate items.
@@ -390,8 +390,8 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
           listeners:
             click:
               element: 'el'
-              fn: @_onCardClick
               scope: @
+              fn: @_onCardClick
           renderTo: @.getEl()
     return
 
@@ -419,19 +419,15 @@ Ext.define 'RallyPokerApp.EstimateSelector', {
   _onCardClick: (e, t) ->
     selectedValue = @_encipher Ext.getCmp(t.id).config.value
     Message = [new Date().getTime(), @config.accountId, selectedValue]
-
-    App = Ext.getCmp 'RallyPokerApp'
-    pokerMessage = App.PokerMessage.compile Message, App.Base62.encode
-
-    Record = Ext.create App.models['conversationpost']
+    pokerMessage = @ParentApp.PokerMessage.compile Message, @ParentApp.Base62.encode
+    Record = Ext.create @ParentApp.models['conversationpost']
     Record.set
-      Artifact: App.CurrentStory.data.keys[0]
+      Artifact: @ParentApp.CurrentStory.data.keys[0]
       User: @config.accountId
       Text: 'Pointed this story with RallyPoker. <span style="display:none">' + encodeURIComponent(pokerMessage) + '<\/span>'
     # Record.save
     #   success: (b, o) =>
-      @update
-        vote: selectedValue
+    @ParentApp.DiscussionsStore.reload()
     #     return
     #   failure: (b, o) ->
     #     # debugger
