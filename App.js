@@ -80,12 +80,15 @@ Ext.define('RallyPokerApp', {
     };
   })(),
   PokerMessage: (function() {
-    var env, msg, pkg, sep;
+    var env, esc, msg, pkg, sep;
 
+    esc = function(str) {
+      return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+    };
     sep = ['/', '&'];
     msg = new RegExp("^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$");
     env = ['[[', ']]'];
-    pkg = new RegExp("\\[\\[(" + sep[0] + ".+)\\]\\]");
+    pkg = new RegExp(esc(env[0]) + "(" + sep[0] + ".+?)" + esc(env[1]));
     return {
       compile: function(M) {
         var a, fn, s;
@@ -103,10 +106,10 @@ Ext.define('RallyPokerApp', {
       extract: function(s) {
         var a;
 
-        if (!s || !(a = s.match(pkg))) {
-          return false;
-        } else {
+        if (s && (a = s.match(pkg))) {
           return a.pop();
+        } else {
+          return false;
         }
       },
       parse: function(s) {
@@ -189,16 +192,25 @@ Ext.define('RallyPokerApp', {
         click: {
           element: 'el',
           fn: function(e, t) {
-            var StoryListItem, storyListItemName;
+            var StoryListItem, storyListItemId, storyListItemName;
 
-            StoryListItem = Ext.get(t).findParent('.storylistitem');
-            storyListItemName = Ext.get(StoryListItem).child('.storylistitem-id').getHTML();
+            StoryListItem = Ext.get(Ext.get(t).findParent('.storylistitem'));
+            storyListItemName = StoryListItem.child('.storylistitem-id').getHTML();
             Ext.get('storytitle').update(storyListItemName);
+            storyListItemId = StoryListItem.getAttribute('data-id');
             _this.CurrentStory.load({
               filters: [
                 {
                   property: 'ObjectID',
-                  value: Ext.get(t).findParent('.storylistitem').getAttribute('data-id')
+                  value: storyListItemId
+                }
+              ]
+            });
+            _this.DiscussionsStore.load({
+              filters: [
+                {
+                  property: 'Artifact.ObjectID',
+                  value: storyListItemId
                 }
               ]
             });
@@ -214,21 +226,7 @@ Ext.define('RallyPokerApp', {
     this.CurrentStory = Ext.create('Rally.data.WsapiDataStore', {
       model: 'userstory',
       limit: 1,
-      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion'],
-      listeners: {
-        load: function(store, result, success) {
-          if (result[0].data.Discussion.length) {
-            _this.DiscussionsStore.load({
-              filters: [
-                {
-                  property: 'Artifact.ObjectID',
-                  value: result[0].data.ObjectID
-                }
-              ]
-            });
-          }
-        }
-      }
+      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
     });
     this.StoryPage = Ext.create('Ext.view.View', {
       store: this.CurrentStory,
@@ -247,19 +245,13 @@ Ext.define('RallyPokerApp', {
       itemSelector: 'div.storydetail'
     });
     this.down('#storyview').add(this.StoryPage);
-    this.cnt = 0;
     this.DiscussionMessageField = new Ext.data.Field({
       name: 'Message',
       type: 'string',
       convert: function(v, rec) {
-        var message, text;
+        var message;
 
-        _this.cnt++;
-        if (_this.cnt === 2) {
-          message = [new Date().getTime(), _this.getContext().getUser().ObjectID, 020];
-          text = rec.get('Text') + "<br/><p>" + _this.PokerMessage.compile(message, _this.Base62.encode) + "</p>";
-        }
-        if (message = _this.PokerMessage.extract(text)) {
+        if (message = _this.PokerMessage.extract(rec.get('Text'))) {
           return (_this.PokerMessage.parse(message, _this.Base62.decode)).pop();
         } else {
           return false;
@@ -280,28 +272,80 @@ Ext.define('RallyPokerApp', {
     });
     this.DiscussionThread = Ext.create('Ext.view.View', {
       store: this.DiscussionsStore,
-      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">', '{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '<li>{User._refObjectName}</li>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '</ul>', '</div>', '</tpl>', '</tpl>', '<div id="messageaddnew"><h3>Cast your vote</h3></div>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">', '{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount && this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', {
+      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '<tpl for="whoVoted">', '<li>{name} at {when}</li>', '</tpl>', '</ul>', '</div>', '</tpl>', '</tpl>', '<div class="estimateselector"></div>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount && this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', {
+        accountVoted: false,
         shownMessages: false,
-        shownDiscussion: false
+        shownDiscussion: false,
+        whoVoted: {}
       }),
-      listeners: {
-        refresh: function() {
-          Ext.create('RallyPokerApp.EstimateSelector', {
-            renderTo: Ext.query('#messageaddnew')[0]
-          });
+      itemSelector: 'div.discussionitem',
+      accountRef: "/user/" + Rally.environment.getContext().getUser().ObjectID,
+      prepareData: function(data, index, record) {
+        var D, V, k, _i, _len, _ref;
+
+        if (data.Message) {
+          var timestamp = data.CreationDate.getTime();
+          if ((this.tpl.whoVoted[data.User._ref] == null) || timestamp > this.tpl.whoVoted[data.User._ref].when) {
+            this.tpl.whoVoted[data.User._ref] = {
+              post: data.ObjectID,
+              when: timestamp,
+              user: data.User._ref,
+              name: data.User._refObjectName,
+              vote: data.Message
+            };
+          }
         }
+        if (index === this.store.data.length - 1) {
+          var whenVoted = [], voteMap = {};
+          data.whoVoted = [];
+          _ref = this.tpl.whoVoted;
+          for (k in _ref) {
+            V = _ref[k];
+            if (k === this.accountRef) {
+              this.tpl.accountVoted = V;
+            }
+            if (this.tpl.whoVoted.hasOwnProperty(k)) {
+              whenVoted.push(V.when);
+              voteMap[V.when] = V;
+            }
+          }
+          whenVoted.sort();
+          for (_i = 0, _len = whenVoted.length; _i < _len; _i++) {
+            k = whenVoted[_i];
+            D = new Date(voteMap[k].when);
+            voteMap[k].when = Ext.util.Format.date(D, 'g:iA') + ' on ' + Ext.util.Format.date(D, 'm-d-Y');
+            data.whoVoted.push(voteMap[k]);
+          }
+        }
+        return data;
       },
-      itemSelector: 'div.discussionitem'
+      listeners: {
+        scope: this,
+        refresh: function(view) {
+          var StoryEstimator;
+
+          StoryEstimator = Ext.create('EstimateSelector', {
+            ParentApp: this,
+            accountId: Rally.environment.getContext().getUser().ObjectID,
+            renderTo: Ext.query('.estimateselector')[0]
+          });
+          StoryEstimator.update(view.tpl.accountVoted);
+          view.tpl.accountVoted = false;
+          view.tpl.shownMessages = false;
+          view.tpl.shownDiscussion = false;
+          view.tpl.whoVoted = {};
+        }
+      }
     });
     this.down('#storyview').add(this.DiscussionThread);
   }
 });
 
-Ext.define('RallyPokerApp.EstimateSelector', {
+Ext.define('EstimateSelector', {
   extend: 'Ext.Container',
-  cls: 'estimateselector',
-  items: [],
   config: {
+    accountId: 0,
+    cipher: 0,
     deck: [
       {
         value: 00,
@@ -343,46 +387,112 @@ Ext.define('RallyPokerApp.EstimateSelector', {
     ]
   },
   constructor: function(config) {
-    var c, _i, _len, _onCardClick, _ref,
-      _this = this;
-
     this.mergeConfig(config);
-    _onCardClick = function(e, t) {
-      var compiled, message, record, userId;
+    if (config.accountId != null) {
+      this.config.cipher = config.accountId % 10;
+    }
+    this.callParent([config]);
+  },
+  update: function(data) {
+    var C, _i, _len, _ref;
 
-      _this = Ext.getCmp('RallyPokerApp');
-      userId = _this.getContext().getUser().ObjectID;
-      message = [new Date().getTime(), userId, Ext.getCmp(t.id).config.value];
-      compiled = _this.PokerMessage.compile(message, _this.Base62.encode);
-      record = Ext.create(_this.models['conversationpost']);
-      record.set({
-        Artifact: _this.CurrentStory.data.keys[0],
-        User: userId,
-        Text: 'Pointed this story with RallyPoker.<span style="display:none">' + encodeURIComponent(compiled) + '<\/span>'
-      });
-      record.save({
-        failure: function(b, o) {
-          debugger;          alert('it borked :(');
-        }
-      });
-    };
-    _ref = this.config.deck;
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      c = _ref[_i];
-      this.items.push({
-        xtype: 'component',
-        id: 'pokercard-' + c.value,
-        cls: 'pokercard',
-        html: c.label,
-        config: c,
+    if (data.vote) {
+      data.vote = this._decipher(data.vote);
+      this.callParent([data]);
+      Ext.create('Ext.Component', {
+        data: data,
+        tpl: new Ext.XTemplate('<tpl for=".">', '<span data-id="{post}">select a new estimate</span>', '</tpl>'),
         listeners: {
           click: {
             element: 'el',
-            fn: _onCardClick
+            scope: this,
+            fn: this._onReselect
           }
+        },
+        renderTo: this.getEl()
+      });
+    } else {
+      this.callParent([data]);
+      _ref = this.config.deck;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        C = _ref[_i];
+        Ext.create('Ext.Component', {
+          id: 'pokercard-' + C.value,
+          cls: 'pokercard',
+          html: C.label,
+          config: C,
+          listeners: {
+            click: {
+              element: 'el',
+              scope: this,
+              fn: this._onCardClick
+            }
+          },
+          renderTo: this.getEl()
+        });
+      }
+    }
+  },
+  tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="vote">', '<h3>Your estimate: {vote}</h3>', '<tpl else>', '<h3>Select an estimate</h3>', '</tpl>', '</tpl>'),
+  _encipher: function(v) {
+    return (v + this.config.cipher) % this.config.deck.length;
+  },
+  _decipher: function(v) {
+    return this.config.deck[(v = (v - this.config.cipher) % this.config.deck.length) < 0 ? this.config.deck.length + v : v].label;
+  },
+  _onCardClick: function(e, t) {
+    var Message, Record, pokerMessage, selectedValue,
+      _this = this;
+
+    selectedValue = this._encipher(Ext.getCmp(t.id).config.value);
+    Message = [new Date().getTime(), this.config.accountId, selectedValue];
+    pokerMessage = this.ParentApp.PokerMessage.compile(Message, this.ParentApp.Base62.encode);
+    Record = Ext.create(this.ParentApp.models['conversationpost']);
+    Record.set({
+      Artifact: this.ParentApp.CurrentStory.data.keys[0],
+      User: this.config.accountId,
+      Text: 'Pointed this story with RallyPoker. <span style="display:none">' + encodeURIComponent(pokerMessage) + '<\/span>'
+    });
+    Record.save({
+      success: function(b, o) {
+        _this.ParentApp.DiscussionsStore.reload();
+      },
+      failure: function(b, o) {
+        alert('Error submitting your estimate. Please try again.');
+      }
+    });
+  },
+  _onReselect: function(e, t) {
+    var EstimateStore;
+
+    EstimateStore = Ext.create('Rally.data.WsapiDataStore', {
+      model: 'conversationpost',
+      autoLoad: true,
+      filters: [
+        {
+          property: 'ObjectID',
+          value: t.getAttribute('data-id')
+        }
+      ],
+      limit: 1,
+      listeners: {
+        scope: this,
+        load: this._onEstimateStoreLoad
+      }
+    });
+  },
+  _onEstimateStoreLoad: function(store, result, success) {
+    var _this = this;
+
+    if (success) {
+      store.data.items[0].destroy({
+        success: function() {
+          _this.ParentApp.DiscussionsStore.reload();
+        },
+        failure: function() {
+          alert('Error deleting your estimate. Please try again.');
         }
       });
     }
-    this.callParent([this.config]);
   }
 });
