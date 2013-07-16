@@ -273,13 +273,13 @@ Ext.define('RallyPokerApp', {
     this.DiscussionThread = Ext.create('Ext.view.View', {
       store: this.DiscussionsStore,
       tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '<tpl for="whoVoted">', '<li>{name} at {when}</li>', '</tpl>', '</ul>', '</div>', '</tpl>', '</tpl>', '<div class="estimateselector"></div>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount && this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', {
-        accountRef: "/user/" + Rally.environment.getContext().getUser().ObjectID,
         accountVoted: false,
         shownMessages: false,
         shownDiscussion: false,
         whoVoted: {}
       }),
       itemSelector: 'div.discussionitem',
+      accountRef: "/user/" + Rally.environment.getContext().getUser().ObjectID,
       prepareData: function(data, index, record) {
         var D, V, k, _i, _len, _ref;
 
@@ -300,7 +300,7 @@ Ext.define('RallyPokerApp', {
           _ref = this.tpl.whoVoted;
           for (k in _ref) {
             V = _ref[k];
-            if (k === this.tpl.accountRef) {
+            if (k === this.accountRef) {
               this.tpl.accountVoted = V.vote;
             }
             if (this.tpl.whoVoted.hasOwnProperty(k)) {
@@ -331,6 +331,10 @@ Ext.define('RallyPokerApp', {
           StoryEstimator.update({
             vote: view.tpl.accountVoted
           });
+          view.tpl.accountVoted = false;
+          view.tpl.shownMessages = false;
+          view.tpl.shownDiscussion = false;
+          view.tpl.whoVoted = {};
         }
       }
     });

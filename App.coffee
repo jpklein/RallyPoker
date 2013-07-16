@@ -282,7 +282,6 @@ Ext.define 'RallyPokerApp', {
           '</tpl>',
         '</tpl>',
         {
-          accountRef: "/user/" + Rally.environment.getContext().getUser().ObjectID
           accountVoted: false
           shownMessages: false
           shownDiscussion: false
@@ -290,6 +289,7 @@ Ext.define 'RallyPokerApp', {
         }
       )
       itemSelector: 'div.discussionitem'
+      accountRef: "/user/" + Rally.environment.getContext().getUser().ObjectID
       prepareData: (data, index, record) ->
         if data.Message
           `var timestamp = data.CreationDate.getTime()`
@@ -302,9 +302,8 @@ Ext.define 'RallyPokerApp', {
         if index == @store.data.length - 1
           `var whenVoted = [], voteMap = {}`
           data.whoVoted = []
-          # debugger
           for k, V of @tpl.whoVoted
-            @tpl.accountVoted = V.vote if k == @tpl.accountRef
+            @tpl.accountVoted = V.vote if k == @accountRef
             if @tpl.whoVoted.hasOwnProperty k
               whenVoted.push V.when
               voteMap[V.when] = V
@@ -327,6 +326,11 @@ Ext.define 'RallyPokerApp', {
           # console.log 'refresh. accountVoted = ' + view.tpl.accountVoted
           StoryEstimator.update
             vote: view.tpl.accountVoted
+          # reset template variables for subsequent displays
+          view.tpl.accountVoted = false
+          view.tpl.shownMessages = false
+          view.tpl.shownDiscussion = false
+          view.tpl.whoVoted = {}
           return
     }
     @down('#storyview').add @DiscussionThread
