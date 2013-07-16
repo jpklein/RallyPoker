@@ -399,6 +399,18 @@ Ext.define('EstimateSelector', {
     if (data.vote) {
       data.vote = this._decipher(data.vote);
       this.callParent([data]);
+      Ext.create('Ext.Component', {
+        data: data,
+        tpl: new Ext.XTemplate('<tpl for=".">', '<span data-id="{post}">select a new estimate</span>', '</tpl>'),
+        listeners: {
+          click: {
+            element: 'el',
+            scope: this,
+            fn: this._onReselect
+          }
+        },
+        renderTo: this.getEl()
+      });
     } else {
       this.callParent([data]);
       _ref = this.config.deck;
@@ -429,7 +441,8 @@ Ext.define('EstimateSelector', {
     return this.config.deck[(v = (v - this.config.cipher) % this.config.deck.length) < 0 ? this.config.deck.length + v : v].label;
   },
   _onCardClick: function(e, t) {
-    var Message, Record, pokerMessage, selectedValue;
+    var Message, Record, pokerMessage, selectedValue,
+      _this = this;
 
     selectedValue = this._encipher(Ext.getCmp(t.id).config.value);
     Message = [new Date().getTime(), this.config.accountId, selectedValue];
@@ -440,6 +453,46 @@ Ext.define('EstimateSelector', {
       User: this.config.accountId,
       Text: 'Pointed this story with RallyPoker. <span style="display:none">' + encodeURIComponent(pokerMessage) + '<\/span>'
     });
-    this.ParentApp.DiscussionsStore.reload();
+    Record.save({
+      success: function(b, o) {
+        _this.ParentApp.DiscussionsStore.reload();
+      },
+      failure: function(b, o) {
+        alert('Error submitting your estimate. Please try again.');
+      }
+    });
+  },
+  _onReselect: function(e, t) {
+    var EstimateStore;
+
+    EstimateStore = Ext.create('Rally.data.WsapiDataStore', {
+      model: 'conversationpost',
+      autoLoad: true,
+      filters: [
+        {
+          property: 'ObjectID',
+          value: t.getAttribute('data-id')
+        }
+      ],
+      limit: 1,
+      listeners: {
+        scope: this,
+        load: this._onEstimateStoreLoad
+      }
+    });
+  },
+  _onEstimateStoreLoad: function(store, result, success) {
+    var _this = this;
+
+    if (success) {
+      store.data.items[0].destroy({
+        success: function() {
+          _this.ParentApp.DiscussionsStore.reload();
+        },
+        failure: function() {
+          alert('Error deleting your estimate. Please try again.');
+        }
+      });
+    }
   }
 });

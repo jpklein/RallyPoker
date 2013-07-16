@@ -380,6 +380,21 @@ Ext.define 'EstimateSelector', {
       # values in 'data' passed by reference and later used by template.
       data.vote = @_decipher(data.vote)
       @callParent [data]
+
+      # add control to delete previous vote
+      Ext.create 'Ext.Component',
+          data: data
+          tpl: new Ext.XTemplate(
+            '<tpl for=".">',
+                '<span data-id="{post}">select a new estimate</span>',
+            '</tpl>'
+          )
+          listeners:
+            click:
+              element: 'el'
+              scope: @
+              fn: @_onReselect
+          renderTo: @.getEl()
     else
       # console.log 'update. no vote'
       @callParent [data]
@@ -429,14 +444,37 @@ Ext.define 'EstimateSelector', {
       Artifact: @ParentApp.CurrentStory.data.keys[0]
       User: @config.accountId
       Text: 'Pointed this story with RallyPoker. <span style="display:none">' + encodeURIComponent(pokerMessage) + '<\/span>'
-    # Record.save
-    #   success: (b, o) =>
-    @ParentApp.DiscussionsStore.reload()
-    #     return
-    #   failure: (b, o) ->
-    #     # debugger
-    #     alert 'Error submitting your estimate. Please try again.'
-    #     return
+    Record.save
+      success: (b, o) =>
+        @ParentApp.DiscussionsStore.reload()
+        return
+      failure: (b, o) ->
+        alert 'Error submitting your estimate. Please try again.'
+        return
+    return
 
+  # helper functions bound to the "reselect" link.
+  _onReselect: (e, t) ->
+    EstimateStore = Ext.create 'Rally.data.WsapiDataStore',
+      model: 'conversationpost'
+      autoLoad: true
+      filters: [{
+        property: 'ObjectID'
+        value: t.getAttribute 'data-id'
+      }]
+      limit: 1
+      listeners:
+        scope: @
+        load: @_onEstimateStoreLoad
+    return
+  _onEstimateStoreLoad: (store, result, success) ->
+    if success
+      store.data.items[0].destroy
+        success: () =>
+          @ParentApp.DiscussionsStore.reload()
+          return
+        failure: () ->
+          alert 'Error deleting your estimate. Please try again.'
+          return
     return
 }
