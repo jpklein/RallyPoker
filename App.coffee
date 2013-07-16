@@ -295,6 +295,7 @@ Ext.define 'RallyPokerApp', {
           `var timestamp = data.CreationDate.getTime()`
           if not @tpl.whoVoted[data.User._ref]? or timestamp > @tpl.whoVoted[data.User._ref].when
             @tpl.whoVoted[data.User._ref] =
+              post: data.ObjectID
               when: timestamp
               user: data.User._ref
               name: data.User._refObjectName
@@ -303,7 +304,7 @@ Ext.define 'RallyPokerApp', {
           `var whenVoted = [], voteMap = {}`
           data.whoVoted = []
           for k, V of @tpl.whoVoted
-            @tpl.accountVoted = V.vote if k == @accountRef
+            @tpl.accountVoted = V if k == @accountRef
             if @tpl.whoVoted.hasOwnProperty k
               whenVoted.push V.when
               voteMap[V.when] = V
@@ -324,8 +325,7 @@ Ext.define 'RallyPokerApp', {
             accountId: Rally.environment.getContext().getUser().ObjectID
             renderTo: Ext.query('.estimateselector')[0]
           # console.log 'refresh. accountVoted = ' + view.tpl.accountVoted
-          StoryEstimator.update
-            vote: view.tpl.accountVoted
+          StoryEstimator.update view.tpl.accountVoted
           # reset template variables for subsequent displays
           view.tpl.accountVoted = false
           view.tpl.shownMessages = false

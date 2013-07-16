@@ -287,6 +287,7 @@ Ext.define('RallyPokerApp', {
           var timestamp = data.CreationDate.getTime();
           if ((this.tpl.whoVoted[data.User._ref] == null) || timestamp > this.tpl.whoVoted[data.User._ref].when) {
             this.tpl.whoVoted[data.User._ref] = {
+              post: data.ObjectID,
               when: timestamp,
               user: data.User._ref,
               name: data.User._refObjectName,
@@ -301,7 +302,7 @@ Ext.define('RallyPokerApp', {
           for (k in _ref) {
             V = _ref[k];
             if (k === this.accountRef) {
-              this.tpl.accountVoted = V.vote;
+              this.tpl.accountVoted = V;
             }
             if (this.tpl.whoVoted.hasOwnProperty(k)) {
               whenVoted.push(V.when);
@@ -328,9 +329,7 @@ Ext.define('RallyPokerApp', {
             accountId: Rally.environment.getContext().getUser().ObjectID,
             renderTo: Ext.query('.estimateselector')[0]
           });
-          StoryEstimator.update({
-            vote: view.tpl.accountVoted
-          });
+          StoryEstimator.update(view.tpl.accountVoted);
           view.tpl.accountVoted = false;
           view.tpl.shownMessages = false;
           view.tpl.shownDiscussion = false;
