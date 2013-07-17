@@ -133,8 +133,45 @@ Ext.define('RallyPokerApp', {
     };
   })(),
   launch: function() {
-    var _this = this;
+    var projectID,
+      _this = this;
 
+    this.Account = this.getContext().getUser();
+    projectID = this.getContext().getProject().ObjectID;
+    Ext.create('Rally.data.WsapiDataStore', {
+      model: 'Project',
+      fetch: ['TeamMembers'],
+      filters: [
+        {
+          property: 'ObjectID',
+          value: projectID
+        }
+      ],
+      autoLoad: true,
+      listeners: {
+        scope: this,
+        load: function(store, result, success) {
+          var M, _i, _len, _ref;
+
+          if (!success) {
+            return;
+          }
+          this.Account.ref = '/user/' + this.Account.ObjectID;
+          this.Account.isTeamMember = false;
+          _ref = result[0].data.TeamMembers;
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            M = _ref[_i];
+            if (M._ref === this.Account.ref) {
+              this.Account.isTeamMember = true;
+            }
+          }
+          this.down('#storypicker').add({
+            xtype: 'component',
+            html: 'You are a ' + (this.Account.isTeamMember ? 'Pig. Oink, oink.' : 'Chicken. Try harder!')
+          });
+        }
+      }
+    });
     this.IterationsStore = Ext.create('Rally.data.WsapiDataStore', {
       model: 'Iteration',
       fetch: ['Name'],

@@ -95,6 +95,32 @@ Ext.define 'RallyPokerApp', {
     }
 
   launch: () ->
+    @Account = @getContext().getUser()
+    projectID = @getContext().getProject().ObjectID
+
+    Ext.create 'Rally.data.WsapiDataStore',
+      model: 'Project'
+      fetch: ['TeamMembers']
+      filters: [{ property: 'ObjectID', value: projectID }]
+      autoLoad: true
+      listeners:
+        scope: @
+        # beforeload: (store) ->
+        #   @getEl().mask 'Loading...'
+        load: (store, result, success) ->
+          return if not success
+          @Account.ref = '/user/' + @Account.ObjectID
+          @Account.isTeamMember = false
+
+          for M in result[0].data.TeamMembers
+            @Account.isTeamMember = true if M._ref == @Account.ref
+
+          @down('#storypicker').add
+            xtype: 'component'
+            html: 'You are a ' + if @Account.isTeamMember then 'Pig. Oink, oink.' else 'Chicken. Try harder!'
+          # @getEl().unmask()
+          return
+
     @IterationsStore = Ext.create 'Rally.data.WsapiDataStore', {
       # id: 'iterationsStore'
       model: 'Iteration'
