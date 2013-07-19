@@ -96,6 +96,8 @@ Ext.define 'RallyPokerApp', {
 
   launch: () ->
     @Account = @getContext().getUser()
+    @Account.ref = '/user/' + @Account.ObjectID
+    @Account.isTeamMember = false
     projectID = @getContext().getProject().ObjectID
 
     Ext.create 'Rally.data.WsapiDataStore',
@@ -109,15 +111,10 @@ Ext.define 'RallyPokerApp', {
         #   @getEl().mask 'Loading...'
         load: (store, result, success) ->
           return if not success
-          @Account.ref = '/user/' + @Account.ObjectID
-          @Account.isTeamMember = false
-
           for M in result[0].data.TeamMembers
-            @Account.isTeamMember = true if M._ref == @Account.ref
-
-          @down('#storypicker').add
-            xtype: 'component'
-            html: 'You are a ' + if @Account.isTeamMember then 'Pig. Oink, oink.' else 'Chicken. Try harder!'
+            if M._ref == @Account.ref
+              @Account.isTeamMember = true
+              return
           # @getEl().unmask()
           return
 
@@ -348,7 +345,8 @@ Ext.define 'RallyPokerApp', {
         refresh: (view) ->
           StoryEstimator = Ext.create 'EstimateSelector',
             ParentApp: @
-            accountId: Rally.environment.getContext().getUser().ObjectID
+            Account: @Account
+            # accountId: Rally.environment.getContext().getUser().ObjectID
             renderTo: Ext.query('.estimateselector')[0]
           # console.log 'refresh. accountVoted = ' + view.tpl.accountVoted
           StoryEstimator.update view.tpl.accountVoted
@@ -370,7 +368,7 @@ Ext.define 'EstimateSelector', {
   # constructor uses config to populate items.
   # items: []
   config:
-    accountId: 0
+    # accountId: 0
     cipher: 0
     # @cfg {Array} (required)
     # a list of values that can be used as story estimates
@@ -395,7 +393,7 @@ Ext.define 'EstimateSelector', {
 
   constructor: (config) ->
     @mergeConfig config
-    @config.cipher = config.accountId % 10 if config.accountId?
+    @config.cipher = @Account.ObjectID % 10
     @callParent [config]
     return
 
@@ -404,23 +402,23 @@ Ext.define 'EstimateSelector', {
     if data.vote
       # console.log 'update. vote = ' + data.vote
       # values in 'data' passed by reference and later used by template.
-      data.vote = @_decipher(data.vote)
+      data.vote = @_decipher data.vote
       @callParent [data]
 
       # add control to delete previous vote
       Ext.create 'Ext.Component',
-          data: data
-          tpl: new Ext.XTemplate(
-            '<tpl for=".">',
-                '<span data-id="{post}">select a new estimate</span>',
-            '</tpl>'
-          )
-          listeners:
-            click:
-              element: 'el'
-              scope: @
-              fn: @_onReselect
-          renderTo: @.getEl()
+        data: data
+        tpl: new Ext.XTemplate(
+          '<tpl for=".">',
+            '<span data-id="{post}">select a new estimate</span>',
+          '</tpl>'
+        )
+        listeners:
+          click:
+            element: 'el'
+            scope: @
+            fn: @_onReselect
+        renderTo: @.getEl()
     else
       # console.log 'update. no vote'
       @callParent [data]
@@ -463,12 +461,12 @@ Ext.define 'EstimateSelector', {
   # helper function bound to card's click event.
   _onCardClick: (e, t) ->
     selectedValue = @_encipher Ext.getCmp(t.id).config.value
-    Message = [new Date().getTime(), @config.accountId, selectedValue]
+    Message = [new Date().getTime(), @Account.ObjectID, selectedValue]
     pokerMessage = @ParentApp.PokerMessage.compile Message, @ParentApp.Base62.encode
     Record = Ext.create @ParentApp.models['conversationpost']
     Record.set
       Artifact: @ParentApp.CurrentStory.data.keys[0]
-      User: @config.accountId
+      User: @Account.ObjectID
       Text: 'Pointed this story with RallyPoker. <span style="display:none">' + encodeURIComponent(pokerMessage) + '<\/span>'
     Record.save
       success: (b, o) =>

@@ -137,6 +137,8 @@ Ext.define('RallyPokerApp', {
       _this = this;
 
     this.Account = this.getContext().getUser();
+    this.Account.ref = '/user/' + this.Account.ObjectID;
+    this.Account.isTeamMember = false;
     projectID = this.getContext().getProject().ObjectID;
     Ext.create('Rally.data.WsapiDataStore', {
       model: 'Project',
@@ -156,19 +158,14 @@ Ext.define('RallyPokerApp', {
           if (!success) {
             return;
           }
-          this.Account.ref = '/user/' + this.Account.ObjectID;
-          this.Account.isTeamMember = false;
           _ref = result[0].data.TeamMembers;
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
             M = _ref[_i];
             if (M._ref === this.Account.ref) {
               this.Account.isTeamMember = true;
+              return;
             }
           }
-          this.down('#storypicker').add({
-            xtype: 'component',
-            html: 'You are a ' + (this.Account.isTeamMember ? 'Pig. Oink, oink.' : 'Chicken. Try harder!')
-          });
         }
       }
     });
@@ -363,7 +360,7 @@ Ext.define('RallyPokerApp', {
 
           StoryEstimator = Ext.create('EstimateSelector', {
             ParentApp: this,
-            accountId: Rally.environment.getContext().getUser().ObjectID,
+            Account: this.Account,
             renderTo: Ext.query('.estimateselector')[0]
           });
           StoryEstimator.update(view.tpl.accountVoted);
@@ -381,7 +378,6 @@ Ext.define('RallyPokerApp', {
 Ext.define('EstimateSelector', {
   extend: 'Ext.Container',
   config: {
-    accountId: 0,
     cipher: 0,
     deck: [
       {
@@ -425,9 +421,7 @@ Ext.define('EstimateSelector', {
   },
   constructor: function(config) {
     this.mergeConfig(config);
-    if (config.accountId != null) {
-      this.config.cipher = config.accountId % 10;
-    }
+    this.config.cipher = this.Account.ObjectID % 10;
     this.callParent([config]);
   },
   update: function(data) {
@@ -482,12 +476,12 @@ Ext.define('EstimateSelector', {
       _this = this;
 
     selectedValue = this._encipher(Ext.getCmp(t.id).config.value);
-    Message = [new Date().getTime(), this.config.accountId, selectedValue];
+    Message = [new Date().getTime(), this.Account.ObjectID, selectedValue];
     pokerMessage = this.ParentApp.PokerMessage.compile(Message, this.ParentApp.Base62.encode);
     Record = Ext.create(this.ParentApp.models['conversationpost']);
     Record.set({
       Artifact: this.ParentApp.CurrentStory.data.keys[0],
-      User: this.config.accountId,
+      User: this.Account.ObjectID,
       Text: 'Pointed this story with RallyPoker. <span style="display:none">' + encodeURIComponent(pokerMessage) + '<\/span>'
     });
     Record.save({
