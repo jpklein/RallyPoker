@@ -70,6 +70,21 @@ Ext.define 'RallyPokerApp', {
         return
     }
 
+  # Given an enciphered message and the Account that created it, the Deck returns
+  # the label (ie. point value) of the selected Card.
+  # @todo allow non-team members to select to use different decks? include a hash
+  # for each deck as part of the message to detect when a different deck was used
+# Ext.define 'PokerDeck',
+#   extend: 'Ext.Component'
+  PokerDeck: do ->
+    cards: ['?', '0', '&#189;', '1', '2', '3', '5', '8', '13', '20', '40', '100']
+    # simple caesar cipher to obfuscate card values using last digit of user id.
+    _encipher: (key, shift) -> (key + shift) % @cards.length
+    _decipher: (msg, shift) -> if (msg = (msg - shift) % @cards.length) < 0 then @cards.length + msg else msg
+    return
+      # pickCard: () ->
+      revealCard: (msg, Account) -> cards[ _decipher(msg, Account.ObjectID % 10) ]
+
   PokerMessage: do () ->
     # helper fn to escape RegEx-reserved strings
     esc = (str) -> str.replace /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&"
