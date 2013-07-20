@@ -297,7 +297,7 @@ Ext.define 'RallyPokerApp', {
           '</tpl>',
           '<tpl if="xindex == xcount && this.shownMessages">',
             '<tpl for="whoVoted">',
-                  '<li>{name} at {when}</li>',
+                  '<li data-id="{vote}"><span data-id="{user}">{name}</span> at {when}</li>',
             '</tpl>'
                 '</ul>',
               '</div>',
@@ -350,6 +350,8 @@ Ext.define 'RallyPokerApp', {
           for k in whenVoted
             D = new Date voteMap[k].when
             voteMap[k].when = Ext.util.Format.date(D, 'g:iA') + ' on ' + Ext.util.Format.date(D, 'm-d-Y')
+            A = /user\/(d+)/.exec voteMap[k].user
+            voteMap[k].user = A[1]
             data.whoVoted.push voteMap[k]
           # console.log whenVoted
           # console.log @tpl.whenVoted
