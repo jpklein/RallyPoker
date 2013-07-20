@@ -358,12 +358,14 @@ Ext.define('RallyPokerApp', {
         refresh: function(view) {
           var StoryEstimator;
 
-          StoryEstimator = Ext.create('EstimateSelector', {
-            ParentApp: this,
-            Account: this.Account,
-            renderTo: Ext.query('.estimateselector')[0]
-          });
-          StoryEstimator.update(view.tpl.accountVoted);
+          if (this.Account.isTeamMember) {
+            StoryEstimator = Ext.create('EstimateSelector', {
+              ParentApp: this,
+              Account: this.Account,
+              renderTo: Ext.query('.estimateselector')[0]
+            });
+            StoryEstimator.update(view.tpl.accountVoted);
+          }
           view.tpl.accountVoted = false;
           view.tpl.shownMessages = false;
           view.tpl.shownDiscussion = false;

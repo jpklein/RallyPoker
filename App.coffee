@@ -343,13 +343,13 @@ Ext.define 'RallyPokerApp', {
       listeners:
         scope: @
         refresh: (view) ->
-          StoryEstimator = Ext.create 'EstimateSelector',
-            ParentApp: @
-            Account: @Account
-            # accountId: Rally.environment.getContext().getUser().ObjectID
-            renderTo: Ext.query('.estimateselector')[0]
-          # console.log 'refresh. accountVoted = ' + view.tpl.accountVoted
-          StoryEstimator.update view.tpl.accountVoted
+          if @Account.isTeamMember
+            # @todo any way to create this widget once and just hide/update/show?
+            StoryEstimator = Ext.create 'EstimateSelector',
+              ParentApp: @
+              Account: @Account
+              renderTo: Ext.query('.estimateselector')[0]
+            StoryEstimator.update view.tpl.accountVoted
           # reset template variables for subsequent displays
           view.tpl.accountVoted = false
           view.tpl.shownMessages = false
