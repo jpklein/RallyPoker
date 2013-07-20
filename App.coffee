@@ -81,10 +81,10 @@ Ext.define 'RallyPokerApp', {
     # simple caesar cipher to obfuscate card values using last digit of user id.
     _encipher: (key, shift) -> (key + shift) % @cards.length
     _decipher: (msg, shift) -> if (msg = (msg - shift) % @cards.length) < 0 then @cards.length + msg else msg
-    return
+    return {
       # pickCard: () ->
       revealCard: (msg, Account) -> cards[ _decipher(msg, Account.ObjectID % 10) ]
-
+    }
   PokerMessage: do () ->
     # helper fn to escape RegEx-reserved strings
     esc = (str) -> str.replace /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&"
@@ -350,7 +350,8 @@ Ext.define 'RallyPokerApp', {
           for k in whenVoted
             D = new Date voteMap[k].when
             voteMap[k].when = Ext.util.Format.date(D, 'g:iA') + ' on ' + Ext.util.Format.date(D, 'm-d-Y')
-            A = /user\/(d+)/.exec voteMap[k].user
+            debugger
+            A = /user\/(\d+)/.exec voteMap[k].user
             voteMap[k].user = A[1]
             data.whoVoted.push voteMap[k]
           # console.log whenVoted
