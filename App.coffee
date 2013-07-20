@@ -297,7 +297,7 @@ Ext.define 'RallyPokerApp', {
           '</tpl>',
           '<tpl if="xindex == xcount && this.shownMessages">',
             '<tpl for="whoVoted">',
-                  '<li data-id="{vote}"><span data-id="{user}">{name}</span> at {when}</li>',
+                  '<li data-vote="{vote}"><span data-userid="{user}">{name}</span> at {when}</li>',
             '</tpl>'
                 '</ul>',
               '</div>',
