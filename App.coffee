@@ -77,13 +77,13 @@ Ext.define 'RallyPokerApp', {
 # Ext.define 'PokerDeck',
 #   extend: 'Ext.Component'
   PokerDeck: do ->
-    cards: ['?', '0', '&#189;', '1', '2', '3', '5', '8', '13', '20', '40', '100']
+    cards = ['?', '0', '&#189;', '1', '2', '3', '5', '8', '13', '20', '40', '100']
     # simple caesar cipher to obfuscate card values using last digit of user id.
-    _encipher: (key, shift) -> (key + shift) % @cards.length
-    _decipher: (msg, shift) -> if (msg = (msg - shift) % @cards.length) < 0 then @cards.length + msg else msg
+    _encipher = (key, shift) -> (key + shift) % cards.length
+    _decipher = (msg, shift) -> if (msg = (msg - shift) % cards.length) < 0 then cards.length + msg else msg
     return {
       # pickCard: () ->
-      revealCard: (msg, Account) -> cards[ _decipher(msg, Account.ObjectID % 10) ]
+      revealCard: (msg, userid) -> cards[_decipher(msg, userid % 10)]
     }
   PokerMessage: do () ->
     # helper fn to escape RegEx-reserved strings
@@ -297,7 +297,10 @@ Ext.define 'RallyPokerApp', {
           '</tpl>',
           '<tpl if="xindex == xcount && this.shownMessages">',
             '<tpl for="whoVoted">',
-                  '<li data-vote="{vote}"><span data-userid="{user}">{name}</span> at {when}</li>',
+                  '<li>',
+                    '<span class="card" data-vote="{vote}" data-userid="{user}"></span>',
+                    '{name} at {when}',
+                  '</li>',
             '</tpl>'
                 '</ul>',
               '</div>',
@@ -350,7 +353,6 @@ Ext.define 'RallyPokerApp', {
           for k in whenVoted
             D = new Date voteMap[k].when
             voteMap[k].when = Ext.util.Format.date(D, 'g:iA') + ' on ' + Ext.util.Format.date(D, 'm-d-Y')
-            debugger
             A = /user\/(\d+)/.exec voteMap[k].user
             voteMap[k].user = A[1]
             data.whoVoted.push voteMap[k]
@@ -368,6 +370,26 @@ Ext.define 'RallyPokerApp', {
               Account: @Account
               renderTo: Ext.query('.estimateselector')[0]
             StoryEstimator.update view.tpl.accountVoted
+          else
+            div = Ext.query('.messagethread')[0]
+            # Ext.create 'Ext.Component',
+            #   html: 'Reload'
+            #   renderTo: div
+            #   listeners:
+            #     click:
+            #       element: 'el'
+            #       scope: @
+            #       fn: @_onReload
+            Ext.create 'Ext.Component',
+              html: 'Reveal'
+              renderTo: div
+              listeners:
+                click:
+                  element: 'el'
+                  scope: @
+                  fn: (e, t) -> #@_onReveal
+                    for C in Ext.get(t).prev('.messageitems').query('li .card')
+                      Ext.get(C).setHTML @PokerDeck.revealCard(C.getAttribute('data-vote'), C.getAttribute('data-userid')) + ' by '
           # reset template variables for subsequent displays
           view.tpl.accountVoted = false
           view.tpl.shownMessages = false

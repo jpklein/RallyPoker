@@ -80,22 +80,22 @@ Ext.define('RallyPokerApp', {
     };
   })(),
   PokerDeck: (function() {
-    ({
-      cards: ['?', '0', '&#189;', '1', '2', '3', '5', '8', '13', '20', '40', '100'],
-      _encipher: function(key, shift) {
-        return (key + shift) % this.cards.length;
-      },
-      _decipher: function(msg, shift) {
-        if ((msg = (msg - shift) % this.cards.length) < 0) {
-          return this.cards.length + msg;
-        } else {
-          return msg;
-        }
+    var cards, _decipher, _encipher;
+
+    cards = ['?', '0', '&#189;', '1', '2', '3', '5', '8', '13', '20', '40', '100'];
+    _encipher = function(key, shift) {
+      return (key + shift) % cards.length;
+    };
+    _decipher = function(msg, shift) {
+      if ((msg = (msg - shift) % cards.length) < 0) {
+        return cards.length + msg;
+      } else {
+        return msg;
       }
-    });
+    };
     return {
-      revealCard: function(msg, Account) {
-        return cards[_decipher(msg, Account.ObjectID % 10)];
+      revealCard: function(msg, userid) {
+        return cards[_decipher(msg, userid % 10)];
       }
     };
   })(),
@@ -326,7 +326,7 @@ Ext.define('RallyPokerApp', {
     });
     this.DiscussionThread = Ext.create('Ext.view.View', {
       store: this.DiscussionsStore,
-      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '<tpl for="whoVoted">', '<li data-vote="{vote}"><span data-userid="{user}">{name}</span> at {when}</li>', '</tpl>', '</ul>', '</div>', '</tpl>', '</tpl>', '<div class="estimateselector"></div>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount && this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', {
+      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '<tpl for="whoVoted">', '<li>', '<span class="card" data-vote="{vote}" data-userid="{user}"></span>', '{name} at {when}', '</li>', '</tpl>', '</ul>', '</div>', '</tpl>', '</tpl>', '<div class="estimateselector"></div>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount && this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', {
         accountVoted: false,
         shownMessages: false,
         shownDiscussion: false,
@@ -368,7 +368,6 @@ Ext.define('RallyPokerApp', {
             k = whenVoted[_i];
             D = new Date(voteMap[k].when);
             voteMap[k].when = Ext.util.Format.date(D, 'g:iA') + ' on ' + Ext.util.Format.date(D, 'm-d-Y');
-            debugger;
             A = /user\/(\d+)/.exec(voteMap[k].user);
             voteMap[k].user = A[1];
             data.whoVoted.push(voteMap[k]);
@@ -379,7 +378,7 @@ Ext.define('RallyPokerApp', {
       listeners: {
         scope: this,
         refresh: function(view) {
-          var StoryEstimator;
+          var StoryEstimator, div;
 
           if (this.Account.isTeamMember) {
             StoryEstimator = Ext.create('EstimateSelector', {
@@ -388,6 +387,29 @@ Ext.define('RallyPokerApp', {
               renderTo: Ext.query('.estimateselector')[0]
             });
             StoryEstimator.update(view.tpl.accountVoted);
+          } else {
+            div = Ext.query('.messagethread')[0];
+            Ext.create('Ext.Component', {
+              html: 'Reveal',
+              renderTo: div,
+              listeners: {
+                click: {
+                  element: 'el',
+                  scope: this,
+                  fn: function(e, t) {
+                    var C, _i, _len, _ref, _results;
+
+                    _ref = Ext.get(t).prev('.messageitems').query('li .card');
+                    _results = [];
+                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                      C = _ref[_i];
+                      _results.push(Ext.get(C).setHTML(this.PokerDeck.revealCard(C.getAttribute('data-vote'), C.getAttribute('data-userid')) + ' by '));
+                    }
+                    return _results;
+                  }
+                }
+              }
+            });
           }
           view.tpl.accountVoted = false;
           view.tpl.shownMessages = false;
