@@ -323,7 +323,7 @@ Ext.define 'RallyPokerApp', {
           '</tpl>',
         '</tpl>',
         {
-          accountVoted: false
+          myVote: false
           shownMessages: false
           shownDiscussion: false
           whoVoted: {}
@@ -345,7 +345,7 @@ Ext.define 'RallyPokerApp', {
           `var whenVoted = [], voteMap = {}`
           data.whoVoted = []
           for k, V of @tpl.whoVoted
-            @tpl.accountVoted = V if k == @accountRef
+            if k is @accountRef then @tpl.myVote = V
             if @tpl.whoVoted.hasOwnProperty k
               whenVoted.push V.when
               voteMap[V.when] = V
@@ -369,7 +369,7 @@ Ext.define 'RallyPokerApp', {
               ParentApp: @
               Account: @Account
               renderTo: Ext.query('.estimateselector')[0]
-            StoryEstimator.update view.tpl.accountVoted
+            StoryEstimator.update view.tpl.myVote
           else
             div = Ext.query('.messagethread')[0]
             # Ext.create 'Ext.Component',
@@ -391,7 +391,7 @@ Ext.define 'RallyPokerApp', {
                     for C in Ext.get(t).prev('.messageitems').query('li .card')
                       Ext.get(C).setHTML @PokerDeck.revealCard(C.getAttribute('data-vote'), C.getAttribute('data-userid')) + ' by '
           # reset template variables for subsequent displays
-          view.tpl.accountVoted = false
+          view.tpl.myVote = false
           view.tpl.shownMessages = false
           view.tpl.shownDiscussion = false
           view.tpl.whoVoted = {}
