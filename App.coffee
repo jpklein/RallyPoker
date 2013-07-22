@@ -202,8 +202,11 @@ Ext.define 'RallyPokerApp', {
     }
     @down('#storypicker').add @StoryList
 
-    Ext.getCmp('storyback').on 'click', () =>
+    Ext.getCmp('storyback').on 'click', =>
       @getLayout().setActiveItem 'storypicker'
+      @StoryPage.update {}
+      @DiscussionThread.update {}
+      @DiscussionThread.tpl.showEstimates = false
       return
 
     @CurrentStory = Ext.create 'Rally.data.WsapiDataStore', {
@@ -281,13 +284,34 @@ Ext.define 'RallyPokerApp', {
             '</tpl>',
           '</tpl>',
           '<tpl if="xindex == xcount && this.shownMessages">',
-            '<tpl for="whoVoted">',
+            '<tpl if="this.isTeamMember">',
+              '<tpl for="whoVoted">',
                   '<li>',
-                    '<span class="card" data-vote="{vote}" data-userid="{user}"></span>',
+                    '<span class="pokercard pokercard-facedown"></span>',
                     '{name} at {when}',
                   '</li>',
-            '</tpl>'
+              '</tpl>'
                 '</ul>',
+            '<tpl else>',
+              '<tpl if="this.showEstimates">',
+                '<tpl for="whoVoted">',
+                  '<li>',
+                    '<span class="pokercard pokercard-faceup">{[this.revealCard(values.vote, values.user)]}</span>',
+                    ' by {name} at {when}',
+                  '</li>',
+                '</tpl>'
+              '<tpl else>',
+                '<tpl for="whoVoted">',
+                  '<li>',
+                    '<span class="pokercard pokercard-facedown"></span>',
+                    '{name} at {when}',
+                  '</li>',
+                '</tpl>'
+              '</tpl>'
+                '</ul>',
+                '<span class="messagethread-reveal">Reveal</span>',
+                '<span class="messagethread-reload">Reload</span>',
+            '</tpl>',
               '</div>',
           '</tpl>',
         '</tpl>',
@@ -308,6 +332,9 @@ Ext.define 'RallyPokerApp', {
           '</tpl>',
         '</tpl>',
         {
+          isTeamMember: _this.Account.isTeamMember
+          showEstimates: false
+          revealCard: _this.PokerDeck.revealCard
           myVote: false
           shownMessages: false
           shownDiscussion: false
@@ -315,7 +342,6 @@ Ext.define 'RallyPokerApp', {
         }
       )
       itemSelector: 'div.discussionitem'
-      accountRef: "/user/" + Rally.environment.getContext().getUser().ObjectID
       prepareData: (data, index, record) ->
         if data.Message
           `var timestamp = data.CreationDate.getTime()`
@@ -330,7 +356,7 @@ Ext.define 'RallyPokerApp', {
           `var whenVoted = [], voteMap = {}`
           data.whoVoted = []
           for k, V of @tpl.whoVoted
-            if k is @accountRef then @tpl.myVote = V
+            if k is _this.Account.ref then @tpl.myVote = V
             if @tpl.whoVoted.hasOwnProperty k
               whenVoted.push V.when
               voteMap[V.when] = V
@@ -343,8 +369,7 @@ Ext.define 'RallyPokerApp', {
             data.whoVoted.push voteMap[k]
           # console.log whenVoted
           # console.log @tpl.whenVoted
-        # console.log 'prepareData. accountVoted = ' + @tpl.accountVoted
-        data
+        return data
       listeners:
         scope: @
         refresh: (view) ->
@@ -355,31 +380,23 @@ Ext.define 'RallyPokerApp', {
               renderTo: Ext.query('.estimateselector')[0]
             StoryEstimator.update view.tpl.myVote
           else
-            div = Ext.query('.messagethread')[0]
-            # Ext.create 'Ext.Component',
-            #   html: 'Reload'
-            #   renderTo: div
-            #   listeners:
-            #     click:
-            #       element: 'el'
-            #       scope: @
-            #       fn: @_onReload
-            Ext.create 'Ext.Component',
-              html: 'Reveal'
-              renderTo: div
-              listeners:
-                click:
-                  element: 'el'
-                  scope: @
-                  fn: (e, t) -> #@_onReveal
-                    for C in Ext.get(t).prev('.messageitems').query('li .card')
-                      Ext.get(C).setHTML @PokerDeck.revealCard(C.getAttribute('data-vote'), C.getAttribute('data-userid')) + ' by '
+            Ext.get(view.el.query('.messagethread-reveal')).on('click', view._onReveal, @)
+            Ext.get(view.el.query('.messagethread-reload')).on('click', view._onReload, @)
           # reset template variables for subsequent displays
           view.tpl.myVote = false
           view.tpl.shownMessages = false
           view.tpl.shownDiscussion = false
           view.tpl.whoVoted = {}
           return
+      _onReveal: (e, t) ->
+        # for C in Ext.get(t).prev('.messageitems').query('li .pokercard')
+        #   Ext.get(C).setHTML @PokerDeck.revealCard(C.getAttribute('data-vote'), C.getAttribute('data-userid')) + ' by '
+        @DiscussionThread.tpl.showEstimates = true
+        @DiscussionsStore.reload()
+        return
+      _onReload: (e, t) ->
+        @DiscussionsStore.reload()
+        return
     }
     @down('#storyview').add @DiscussionThread
 
