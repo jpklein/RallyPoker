@@ -81,7 +81,7 @@ Ext.define 'RallyPokerApp', {
     _encipher = (key, shift) -> (key + shift) % cards.length
     _decipher = (msg, shift) -> if (msg = (msg - shift) % cards.length) < 0 then cards.length + msg else msg
     return {
-      listCards: -> {key: position, value: label} for label, position in cards
+      listCards: -> { key: position, value: label } for label, position in cards
       pickCard: (key, uid) -> _encipher(key, uid % 10)
       revealCard: (msg, uid) -> cards[_decipher(msg, uid % 10)]
     }
@@ -137,10 +137,7 @@ Ext.define 'RallyPokerApp', {
       # id: 'iterationsStore'
       model: 'Iteration'
       fetch: ['Name']
-      sorters: [{
-        property: 'Name'
-        direction: 'DESC'
-      }]
+      sorters: [{ property: 'Name', direction: 'DESC' }]
       autoLoad: true
       listeners:
         load: (store, result, success) =>
@@ -166,10 +163,7 @@ Ext.define 'RallyPokerApp', {
     @StoriesStore = Ext.create 'Rally.data.WsapiDataStore', {
       model: 'User Story'
       fetch: ['ObjectID', 'FormattedID', 'Name']
-      sorters: [{
-        property: 'Name'
-        direction: 'DESC'
-      }]
+      sorters: [{ property: 'Name', direction: 'DESC' }]
       # listeners:
       #   load: (store, result, success) ->
       #     debugger
@@ -394,61 +388,33 @@ Ext.define 'RallyPokerApp', {
 
 Ext.define 'EstimateSelector', {
   extend: 'Ext.Container'
-  # cls: 'estimateselector'
-  # constructor uses config to populate items.
-  # items: []
-  # update gets called before the template is processed.
+
+  # template is processed during call to parent function using values in 'data'.
   update: (data) ->
     if data.vote
-      # console.log 'update. vote = ' + data.vote
-      # values in 'data' passed by reference and later used by template.
-      data.vote = @ParentApp.PokerDeck.revealCard data.vote, data.user
+      data.vote = @ParentApp.PokerDeck.revealCard(data.vote, data.user)
       @callParent [data]
 
-      # add control to delete previous vote
-      Ext.create 'Ext.Component',
-        data: data
-        tpl: new Ext.XTemplate(
-          '<tpl for=".">',
-            '<span data-postid="{post}">select a new estimate</span>',
-          '</tpl>'
-        )
-        listeners:
-          click:
-            element: 'el'
-            scope: @
-            fn: @_onReselect
-        renderTo: @.getEl()
+      # add control to delete previous vote.
+      Ext.get(@el.query('.storypointer-reselect')).on('click', @_onReselect, @)
     else
-      # console.log 'update. no vote'
-      data = {deck: @ParentApp.PokerDeck.listCards()}
+      data = { deck: @ParentApp.PokerDeck.listCards() }
       @callParent [data]
 
       # initialize cards.
       # @todo any way to add these once on initComponent and show/hide instead?
-      Ext.get(li).on('click', @_onCardClick, @) for li in @el.query '.pokercard'
-      # for val, key in @ParentApp.PokerDeck.listCards()
-      #   debugger
-      #   Ext.create 'Ext.Component',
-      #     id: 'pokercard-' + key
-      #     cls: 'pokercard pokercard-faceup'
-      #     html: val
-      #     # config: C
-      #     listeners:
-      #       click:
-      #         element: 'el'
-      #         scope: @
-      #         fn: @_onCardClick
-      #     renderTo: @.getEl()
+      Ext.get(li).on('click', @_onCardClick, @) for li in @el.query('.pokercard')
     return
+
   tpl: new Ext.XTemplate(
     '<tpl for=".">',
       '<tpl if="vote">',
         '<h3>Your estimate: {vote}</h3>',
+        '<span class="storypointer-reselect" data-postid="{post}">Select a new estimate</span>',
       '<tpl else>',
         '<h3>Select an estimate</h3>',
         # '<tpl if="xindex == xcount">',
-        '<ul class="pokerdeck">',
+        '<ul class="storypointer">',
         '<tpl for="deck">',
           '<li class="pokercard pokercard-faceup" data-cardid="{key}">',
             '<span>{value}</span>',
@@ -485,10 +451,10 @@ Ext.define 'EstimateSelector', {
 
   # helper functions bound to the "reselect" link.
   _onReselect: (e, t) ->
-    EstimateStore = Ext.create 'Rally.data.WsapiDataStore',
+    Ext.create 'Rally.data.WsapiDataStore',
       model: 'conversationpost'
       autoLoad: true
-      filters: [{ property: 'ObjectID', value: t.getAttribute('data-id') }]
+      filters: [{ property: 'ObjectID', value: t.getAttribute('data-postid') }]
       limit: 1
       listeners:
         scope: @

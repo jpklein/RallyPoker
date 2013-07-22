@@ -445,18 +445,7 @@ Ext.define('EstimateSelector', {
     if (data.vote) {
       data.vote = this.ParentApp.PokerDeck.revealCard(data.vote, data.user);
       this.callParent([data]);
-      Ext.create('Ext.Component', {
-        data: data,
-        tpl: new Ext.XTemplate('<tpl for=".">', '<span data-postid="{post}">select a new estimate</span>', '</tpl>'),
-        listeners: {
-          click: {
-            element: 'el',
-            scope: this,
-            fn: this._onReselect
-          }
-        },
-        renderTo: this.getEl()
-      });
+      Ext.get(this.el.query('.storypointer-reselect')).on('click', this._onReselect, this);
     } else {
       data = {
         deck: this.ParentApp.PokerDeck.listCards()
@@ -469,7 +458,7 @@ Ext.define('EstimateSelector', {
       }
     }
   },
-  tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="vote">', '<h3>Your estimate: {vote}</h3>', '<tpl else>', '<h3>Select an estimate</h3>', '<ul class="pokerdeck">', '<tpl for="deck">', '<li class="pokercard pokercard-faceup" data-cardid="{key}">', '<span>{value}</span>', '</li>', '</tpl>', '</ul>', '</tpl>', '</tpl>'),
+  tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="vote">', '<h3>Your estimate: {vote}</h3>', '<span class="storypointer-reselect" data-postid="{post}">Select a new estimate</span>', '<tpl else>', '<h3>Select an estimate</h3>', '<ul class="storypointer">', '<tpl for="deck">', '<li class="pokercard pokercard-faceup" data-cardid="{key}">', '<span>{value}</span>', '</li>', '</tpl>', '</ul>', '</tpl>', '</tpl>'),
   _onCardClick: function(e, t) {
     var Message, Record, key, message,
       _this = this;
@@ -493,15 +482,13 @@ Ext.define('EstimateSelector', {
     });
   },
   _onReselect: function(e, t) {
-    var EstimateStore;
-
-    EstimateStore = Ext.create('Rally.data.WsapiDataStore', {
+    Ext.create('Rally.data.WsapiDataStore', {
       model: 'conversationpost',
       autoLoad: true,
       filters: [
         {
           property: 'ObjectID',
-          value: t.getAttribute('data-id')
+          value: t.getAttribute('data-postid')
         }
       ],
       limit: 1,
