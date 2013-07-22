@@ -94,8 +94,24 @@ Ext.define('RallyPokerApp', {
       }
     };
     return {
-      revealCard: function(msg, userid) {
-        return cards[_decipher(msg, userid % 10)];
+      listCards: function() {
+        var label, position, _i, _len, _results;
+
+        _results = [];
+        for (position = _i = 0, _len = cards.length; _i < _len; position = ++_i) {
+          label = cards[position];
+          _results.push({
+            key: position,
+            value: label
+          });
+        }
+        return _results;
+      },
+      pickCard: function(key, uid) {
+        return _encipher(key, uid % 10);
+      },
+      revealCard: function(msg, uid) {
+        return cards[_decipher(msg, uid % 10)];
       }
     };
   })(),
@@ -383,7 +399,6 @@ Ext.define('RallyPokerApp', {
           if (this.Account.isTeamMember) {
             StoryEstimator = Ext.create('EstimateSelector', {
               ParentApp: this,
-              Account: this.Account,
               renderTo: Ext.query('.estimateselector')[0]
             });
             StoryEstimator.update(view.tpl.myVote);
@@ -424,62 +439,15 @@ Ext.define('RallyPokerApp', {
 
 Ext.define('EstimateSelector', {
   extend: 'Ext.Container',
-  config: {
-    cipher: 0,
-    deck: [
-      {
-        value: 00,
-        label: '?'
-      }, {
-        value: 01,
-        label: '0'
-      }, {
-        value: 02,
-        label: '&#189;'
-      }, {
-        value: 03,
-        label: '1'
-      }, {
-        value: 04,
-        label: '2'
-      }, {
-        value: 05,
-        label: '3'
-      }, {
-        value: 06,
-        label: '5'
-      }, {
-        value: 07,
-        label: '8'
-      }, {
-        value: 010,
-        label: '13'
-      }, {
-        value: 011,
-        label: '20'
-      }, {
-        value: 012,
-        label: '40'
-      }, {
-        value: 013,
-        label: '100'
-      }
-    ]
-  },
-  constructor: function(config) {
-    this.mergeConfig(config);
-    this.config.cipher = this.Account.ObjectID % 10;
-    this.callParent([config]);
-  },
   update: function(data) {
-    var C, _i, _len, _ref;
+    var li, _i, _len, _ref;
 
     if (data.vote) {
-      data.vote = this._decipher(data.vote);
+      data.vote = this.ParentApp.PokerDeck.revealCard(data.vote, data.user);
       this.callParent([data]);
       Ext.create('Ext.Component', {
         data: data,
-        tpl: new Ext.XTemplate('<tpl for=".">', '<span data-id="{post}">select a new estimate</span>', '</tpl>'),
+        tpl: new Ext.XTemplate('<tpl for=".">', '<span data-postid="{post}">select a new estimate</span>', '</tpl>'),
         listeners: {
           click: {
             element: 'el',
@@ -490,46 +458,30 @@ Ext.define('EstimateSelector', {
         renderTo: this.getEl()
       });
     } else {
+      data = {
+        deck: this.ParentApp.PokerDeck.listCards()
+      };
       this.callParent([data]);
-      _ref = this.config.deck;
+      _ref = this.el.query('.pokercard');
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        C = _ref[_i];
-        Ext.create('Ext.Component', {
-          id: 'pokercard-' + C.value,
-          cls: 'pokercard',
-          html: C.label,
-          config: C,
-          listeners: {
-            click: {
-              element: 'el',
-              scope: this,
-              fn: this._onCardClick
-            }
-          },
-          renderTo: this.getEl()
-        });
+        li = _ref[_i];
+        Ext.get(li).on('click', this._onCardClick, this);
       }
     }
   },
-  tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="vote">', '<h3>Your estimate: {vote}</h3>', '<tpl else>', '<h3>Select an estimate</h3>', '</tpl>', '</tpl>'),
-  _encipher: function(v) {
-    return (v + this.config.cipher) % this.config.deck.length;
-  },
-  _decipher: function(v) {
-    return this.config.deck[(v = (v - this.config.cipher) % this.config.deck.length) < 0 ? this.config.deck.length + v : v].label;
-  },
+  tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="vote">', '<h3>Your estimate: {vote}</h3>', '<tpl else>', '<h3>Select an estimate</h3>', '<ul class="pokerdeck">', '<tpl for="deck">', '<li class="pokercard pokercard-faceup" data-cardid="{key}">', '<span>{value}</span>', '</li>', '</tpl>', '</ul>', '</tpl>', '</tpl>'),
   _onCardClick: function(e, t) {
-    var Message, Record, pokerMessage, selectedValue,
+    var Message, Record, key, message,
       _this = this;
 
-    selectedValue = this._encipher(Ext.getCmp(t.id).config.value);
-    Message = [new Date().getTime(), this.Account.ObjectID, selectedValue];
-    pokerMessage = this.ParentApp.PokerMessage.compile(Message, this.ParentApp.Base62.encode);
+    key = Number(Ext.get(t).findParent('.pokercard').getAttribute('data-cardid'));
+    Message = [new Date().getTime(), this.ParentApp.Account.ObjectID, this.ParentApp.PokerDeck.pickCard(key, this.ParentApp.Account.ObjectID)];
+    message = this.ParentApp.PokerMessage.compile(Message, this.ParentApp.Base62.encode);
     Record = Ext.create(this.ParentApp.models['conversationpost']);
     Record.set({
       Artifact: this.ParentApp.CurrentStory.data.keys[0],
-      User: this.Account.ObjectID,
-      Text: 'Pointed this story with RallyPoker. <span style="display:none">' + encodeURIComponent(pokerMessage) + '<\/span>'
+      User: this.ParentApp.Account.ObjectID,
+      Text: 'Pointed this story with RallyPoker. <span style="display:none">' + encodeURIComponent(message) + '<\/span>'
     });
     Record.save({
       success: function(b, o) {

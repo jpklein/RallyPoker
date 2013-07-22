@@ -42,7 +42,7 @@ Ext.define 'RallyPokerApp', {
     }]
   }]
 
-  Base62: do () ->
+  Base62: do ->
     # Adapted from Javascript Base62 encode/decoder
     # Copyright (c) 2013 Andrew Nesbitt
     # See LICENSE at https://github.com/andrew/base62.js
@@ -50,8 +50,7 @@ Ext.define 'RallyPokerApp', {
     # Library that obfuscates numeric strings as case-sensitive,
     # alphanumeric strings
     chars = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-
-    {
+    return {
       encode: (i) ->
         return if i == 0
         s = ''
@@ -82,10 +81,12 @@ Ext.define 'RallyPokerApp', {
     _encipher = (key, shift) -> (key + shift) % cards.length
     _decipher = (msg, shift) -> if (msg = (msg - shift) % cards.length) < 0 then cards.length + msg else msg
     return {
-      # pickCard: () ->
-      revealCard: (msg, userid) -> cards[_decipher(msg, userid % 10)]
+      listCards: -> {key: position, value: label} for label, position in cards
+      pickCard: (key, uid) -> _encipher(key, uid % 10)
+      revealCard: (msg, uid) -> cards[_decipher(msg, uid % 10)]
     }
-  PokerMessage: do () ->
+
+  PokerMessage: do ->
     # helper fn to escape RegEx-reserved strings
     esc = (str) -> str.replace /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&"
     # [strings] ==> encoded message + custom delimiters
@@ -93,8 +94,7 @@ Ext.define 'RallyPokerApp', {
     msg = new RegExp "^" + sep[0] + "\\w+(?:" + sep[1] + "\\w+)+$"
     env = ['[[', ']]']
     pkg = new RegExp esc(env[0]) + "(" + sep[0] + ".+?)" + esc(env[1])
-
-    {
+    return {
       compile: (M) ->
         fn = arguments[1] || (x) -> x
         a = Ext.clone M
@@ -157,10 +157,7 @@ Ext.define 'RallyPokerApp', {
       listeners:
         change: (field, newValue, oldValue, options) =>
           @StoriesStore.load {
-            filters: [{
-              property: 'Iteration.Name'
-              value: newValue
-            }]
+            filters: [{ property: 'Iteration.Name', value: newValue }]
           }
           return
     }
@@ -200,17 +197,11 @@ Ext.define 'RallyPokerApp', {
 
             storyListItemId = StoryListItem.getAttribute 'data-id'
             @CurrentStory.load {
-              filters: [{
-                property: 'ObjectID'
-                value: storyListItemId
-              }]
+              filters: [{ property: 'ObjectID', value: storyListItemId }]
             }
             # always load the store so that its view is reprocessed.
             @DiscussionsStore.load {
-              filters: [{
-                property: 'Artifact.ObjectID'
-                value: storyListItemId
-              }]
+              filters: [{ property: 'Artifact.ObjectID', value: storyListItemId }]
             }
             @getLayout().setActiveItem 'storyview'
             return
@@ -367,7 +358,6 @@ Ext.define 'RallyPokerApp', {
             # @todo any way to create this widget once and just hide/update/show?
             StoryEstimator = Ext.create 'EstimateSelector',
               ParentApp: @
-              Account: @Account
               renderTo: Ext.query('.estimateselector')[0]
             StoryEstimator.update view.tpl.myVote
           else
@@ -407,42 +397,12 @@ Ext.define 'EstimateSelector', {
   # cls: 'estimateselector'
   # constructor uses config to populate items.
   # items: []
-  config:
-    # accountId: 0
-    cipher: 0
-    # @cfg {Array} (required)
-    # a list of values that can be used as story estimates
-    deck: [
-      { value: `00`, label: '?' }
-      { value: `01`, label: '0' }
-      { value: `02`, label: '&#189;' } # "½"
-      { value: `03`, label: '1' }
-      { value: `04`, label: '2' }
-      { value: `05`, label: '3' }
-      { value: `06`, label: '5' }
-      { value: `07`, label: '8' }
-      { value: `010`, label: '13' }
-      { value: `011`, label: '20' }
-      { value: `012`, label: '40' }
-      { value: `013`, label: '100' }
-      # { value: `014`, label: '' }
-      # { value: `015`, label: '' }
-      # { value: `016`, label: '' }
-      # { value: `017`, label: '' }
-    ]
-
-  constructor: (config) ->
-    @mergeConfig config
-    @config.cipher = @Account.ObjectID % 10
-    @callParent [config]
-    return
-
   # update gets called before the template is processed.
   update: (data) ->
     if data.vote
       # console.log 'update. vote = ' + data.vote
       # values in 'data' passed by reference and later used by template.
-      data.vote = @_decipher data.vote
+      data.vote = @ParentApp.PokerDeck.revealCard data.vote, data.user
       @callParent [data]
 
       # add control to delete previous vote
@@ -450,7 +410,7 @@ Ext.define 'EstimateSelector', {
         data: data
         tpl: new Ext.XTemplate(
           '<tpl for=".">',
-            '<span data-id="{post}">select a new estimate</span>',
+            '<span data-postid="{post}">select a new estimate</span>',
           '</tpl>'
         )
         listeners:
@@ -461,53 +421,59 @@ Ext.define 'EstimateSelector', {
         renderTo: @.getEl()
     else
       # console.log 'update. no vote'
+      data = {deck: @ParentApp.PokerDeck.listCards()}
       @callParent [data]
-      # initialize cards.
-      # @todo any way to create these on initComponent and show/hide instead?
-      for C in @config.deck
-        Ext.create 'Ext.Component',
-          id: 'pokercard-' + C.value
-          cls: 'pokercard'
-          html: C.label
-          config: C
-          listeners:
-            click:
-              element: 'el'
-              scope: @
-              fn: @_onCardClick
-          renderTo: @.getEl()
-    return
 
+      # initialize cards.
+      # @todo any way to add these once on initComponent and show/hide instead?
+      Ext.get(li).on('click', @_onCardClick, @) for li in @el.query '.pokercard'
+      # for val, key in @ParentApp.PokerDeck.listCards()
+      #   debugger
+      #   Ext.create 'Ext.Component',
+      #     id: 'pokercard-' + key
+      #     cls: 'pokercard pokercard-faceup'
+      #     html: val
+      #     # config: C
+      #     listeners:
+      #       click:
+      #         element: 'el'
+      #         scope: @
+      #         fn: @_onCardClick
+      #     renderTo: @.getEl()
+    return
   tpl: new Ext.XTemplate(
     '<tpl for=".">',
       '<tpl if="vote">',
         '<h3>Your estimate: {vote}</h3>',
       '<tpl else>',
         '<h3>Select an estimate</h3>',
+        # '<tpl if="xindex == xcount">',
+        '<ul class="pokerdeck">',
+        '<tpl for="deck">',
+          '<li class="pokercard pokercard-faceup" data-cardid="{key}">',
+            '<span>{value}</span>',
+          '</li>',
+        '</tpl>'
+        '</ul>',
+        # '</tpl>',
       '</tpl>', 
     '</tpl>',
   )
 
-  # listeners:
-  #   beforerender: () ->
-  #     # debugger
-  #     console.log("beforerender. cipher = " + @config.cipher)
-  #     return
-
-  # simple caesar cipher to obfuscate card values using last digit of user id.
-  _encipher: (v) -> (v + @config.cipher) % @config.deck.length
-  _decipher: (v) -> @config.deck[if (v = (v - @config.cipher) % @config.deck.length) < 0 then @config.deck.length + v else v].label
-
   # helper function bound to card's click event.
   _onCardClick: (e, t) ->
-    selectedValue = @_encipher Ext.getCmp(t.id).config.value
-    Message = [new Date().getTime(), @Account.ObjectID, selectedValue]
-    pokerMessage = @ParentApp.PokerMessage.compile Message, @ParentApp.Base62.encode
+    key = Number Ext.get(t).findParent('.pokercard').getAttribute('data-cardid')
+    Message = [
+      new Date().getTime(),
+      @ParentApp.Account.ObjectID,
+      @ParentApp.PokerDeck.pickCard(key, @ParentApp.Account.ObjectID)
+    ]
+    message = @ParentApp.PokerMessage.compile Message, @ParentApp.Base62.encode
     Record = Ext.create @ParentApp.models['conversationpost']
     Record.set
       Artifact: @ParentApp.CurrentStory.data.keys[0]
-      User: @Account.ObjectID
-      Text: 'Pointed this story with RallyPoker. <span style="display:none">' + encodeURIComponent(pokerMessage) + '<\/span>'
+      User: @ParentApp.Account.ObjectID
+      Text: 'Pointed this story with RallyPoker. <span style="display:none">' + encodeURIComponent(message) + '<\/span>'
     Record.save
       success: (b, o) =>
         @ParentApp.DiscussionsStore.reload()
@@ -522,10 +488,7 @@ Ext.define 'EstimateSelector', {
     EstimateStore = Ext.create 'Rally.data.WsapiDataStore',
       model: 'conversationpost'
       autoLoad: true
-      filters: [{
-        property: 'ObjectID'
-        value: t.getAttribute 'data-id'
-      }]
+      filters: [{ property: 'ObjectID', value: t.getAttribute('data-id') }]
       limit: 1
       listeners:
         scope: @
