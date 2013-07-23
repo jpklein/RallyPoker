@@ -275,76 +275,68 @@ Ext.define 'RallyPokerApp', {
     @DiscussionThread = Ext.create 'Ext.view.View', {
       store: @DiscussionsStore
       tpl: new Ext.XTemplate(
-        '<tpl for=".">',
-          '<tpl if="Message !== false">',
-            '<tpl if="!this.shownMessages">{% this.shownMessages = true %}',
-              '<div class="messagethread">',
-                '<h3>Who\'s Voted</h3>',
-                '<ul class="messageitems">',
-            '</tpl>',
-          '</tpl>',
-          '<tpl if="xindex == xcount && this.shownMessages">',
+        '<tpl if="xindex == xcount"><tpl for=".">',
+          '<tpl if="this.messageThread.length">',
+            '<div class="messagethread">',
+              '<h3>Who\'s Voted</h3>',
+              '<ul class="messageitems">',
             '<tpl if="this.isTeamMember">',
               '<tpl for="whoVoted">',
-                  '<li>',
-                    '<span class="pokercard pokercard-facedown"></span>',
-                    '{name} at {when}',
-                  '</li>',
+                '<li>',
+                  '<span class="pokercard pokercard-facedown"></span>',
+                  '{name} at {when}',
+                '</li>',
               '</tpl>'
-                '</ul>',
+              '</ul>',
             '<tpl else>',
               '<tpl if="this.showEstimates">',
                 '<tpl for="whoVoted">',
-                  '<li>',
-                    '<span class="pokercard pokercard-faceup">{[this.revealCard(values.vote, values.user)]}</span>',
-                    ' by {name} at {when}',
-                  '</li>',
+                '<li>',
+                  '<span class="pokercard pokercard-faceup">{[this.revealCard(values.vote, values.user)]}</span>',
+                  ' by {name} at {when}',
+                '</li>',
                 '</tpl>'
               '<tpl else>',
                 '<tpl for="whoVoted">',
-                  '<li>',
-                    '<span class="pokercard pokercard-facedown"></span>',
-                    '{name} at {when}',
-                  '</li>',
-                '</tpl>'
-              '</tpl>'
-                '</ul>',
-                '<span class="messagethread-reveal">Reveal</span>',
-                '<span class="messagethread-reload">Reload</span>',
+                '<li>',
+                  '<span class="pokercard pokercard-facedown"></span>',
+                  '{name} at {when}',
+                '</li>',
+                '</tpl>',
+              '</tpl>',
+              '</ul>',
+              '<span class="messagethread-reveal">Reveal</span>',
+              '<span class="messagethread-reload">Reload</span>',
             '</tpl>',
+            '</div>',
+          '</tpl>',
+            '<div class="estimateselector"></div>'
+          '<tpl if="this.discussionThread.length">',
+            '<div class="discussionthread">',
+              '<h3>Discussion</h3>',
+            '<tpl for="discussionThread">',
+              '<div class="discussionitem">',
+                '<small class="discussionitem-id">{name}: {when}</small>',
+                '<p class="discussionitem-text">{text}</p>',
               '</div>',
+            '</tpl>',
+            '</div>',
           '</tpl>',
-        '</tpl>',
-        '<div class="estimateselector"></div>'
-        '<tpl for=".">',
-          '<tpl if="Message === false">',
-            '<tpl if="!this.shownDiscussion">{% this.shownDiscussion = true %}',
-              '<div class="discussionthread">',
-                '<h3>Discussion</h3>',
-            '</tpl>'
-                '<div class="discussionitem">',
-                  '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>',
-                  '<p class="discussionitem-text">{Text}</p>',
-                '</div>',
-          '</tpl>',
-          '<tpl if="xindex == xcount && this.shownDiscussion">',
-              '</div>',
-          '</tpl>',
-        '</tpl>',
+        '</tpl></tpl>',
         {
           isTeamMember: _this.Account.isTeamMember
           showEstimates: false
           revealCard: _this.PokerDeck.revealCard
           myVote: false
-          shownMessages: false
-          shownDiscussion: false
           whoVoted: {}
+          messageThread: []
+          discussionThread: []
         }
       )
       itemSelector: 'div.discussionitem'
       prepareData: (data, index, record) ->
+        `var timestamp = data.CreationDate.getTime()`
         if data.Message
-          `var timestamp = data.CreationDate.getTime()`
           if not @tpl.whoVoted[data.User._ref]? or timestamp > @tpl.whoVoted[data.User._ref].when
             @tpl.whoVoted[data.User._ref] =
               post: data.ObjectID
@@ -352,23 +344,28 @@ Ext.define 'RallyPokerApp', {
               user: data.User._ref
               name: data.User._refObjectName
               vote: data.Message
+        else
+          @tpl.discussionThread.push
+            when: timestamp
+            name: data.User._refObjectName
+            text: data.Text
+
         if index == @store.data.length - 1
           `var whenVoted = [], voteMap = {}`
           data.whoVoted = []
           for k, V of @tpl.whoVoted
             if k is _this.Account.ref then @tpl.myVote = V
             if @tpl.whoVoted.hasOwnProperty k
-              whenVoted.push V.when
+              @tpl.messageThread.push V.when
               voteMap[V.when] = V
-          whenVoted.sort()
-          for k in whenVoted
+          @tpl.messageThread.sort()
+          for k in @tpl.messageThread
             D = new Date voteMap[k].when
             voteMap[k].when = Ext.util.Format.date(D, 'g:iA') + ' on ' + Ext.util.Format.date(D, 'm-d-Y')
             A = /user\/(\d+)/.exec voteMap[k].user
             voteMap[k].user = A[1]
             data.whoVoted.push voteMap[k]
-          # console.log whenVoted
-          # console.log @tpl.whenVoted
+          data.discussionThread = @tpl.discussionThread
         return data
       listeners:
         scope: @
@@ -384,9 +381,9 @@ Ext.define 'RallyPokerApp', {
             Ext.get(view.el.query('.messagethread-reload')).on('click', view._onReload, @)
           # reset template variables for subsequent displays
           view.tpl.myVote = false
-          view.tpl.shownMessages = false
-          view.tpl.shownDiscussion = false
           view.tpl.whoVoted = {}
+          view.tpl.messageThread = []
+          view.tpl.discussionThread = []
           return
       _onReveal: (e, t) ->
         # for C in Ext.get(t).prev('.messageitems').query('li .pokercard')

@@ -345,21 +345,21 @@ Ext.define('RallyPokerApp', {
     });
     this.DiscussionThread = Ext.create('Ext.view.View', {
       store: this.DiscussionsStore,
-      tpl: new Ext.XTemplate('<tpl for=".">', '<tpl if="Message !== false">', '<tpl if="!this.shownMessages">{% this.shownMessages = true %}', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '</tpl>', '</tpl>', '<tpl if="xindex == xcount && this.shownMessages">', '<tpl if="this.isTeamMember">', '<tpl for="whoVoted">', '<li>', '<span class="pokercard pokercard-facedown"></span>', '{name} at {when}', '</li>', '</tpl>', '</ul>', '<tpl else>', '<tpl if="this.showEstimates">', '<tpl for="whoVoted">', '<li>', '<span class="pokercard pokercard-faceup">{[this.revealCard(values.vote, values.user)]}</span>', ' by {name} at {when}', '</li>', '</tpl>', '<tpl else>', '<tpl for="whoVoted">', '<li>', '<span class="pokercard pokercard-facedown"></span>', '{name} at {when}', '</li>', '</tpl>', '</tpl>', '</ul>', '<span class="messagethread-reveal">Reveal</span>', '<span class="messagethread-reload">Reload</span>', '</tpl>', '</div>', '</tpl>', '</tpl>', '<div class="estimateselector"></div>', '<tpl for=".">', '<tpl if="Message === false">', '<tpl if="!this.shownDiscussion">{% this.shownDiscussion = true %}', '<div class="discussionthread">', '<h3>Discussion</h3>', '</tpl>', '<div class="discussionitem">', '<small class="discussionitem-id">{User._refObjectName}: {CreationDate}</small>', '<p class="discussionitem-text">{Text}</p>', '</div>', '</tpl>', '<tpl if="xindex == xcount && this.shownDiscussion">', '</div>', '</tpl>', '</tpl>', {
+      tpl: new Ext.XTemplate('<tpl if="xindex == xcount"><tpl for=".">', '<tpl if="this.messageThread.length">', '<div class="messagethread">', '<h3>Who\'s Voted</h3>', '<ul class="messageitems">', '<tpl if="this.isTeamMember">', '<tpl for="whoVoted">', '<li>', '<span class="pokercard pokercard-facedown"></span>', '{name} at {when}', '</li>', '</tpl>', '</ul>', '<tpl else>', '<tpl if="this.showEstimates">', '<tpl for="whoVoted">', '<li>', '<span class="pokercard pokercard-faceup">{[this.revealCard(values.vote, values.user)]}</span>', ' by {name} at {when}', '</li>', '</tpl>', '<tpl else>', '<tpl for="whoVoted">', '<li>', '<span class="pokercard pokercard-facedown"></span>', '{name} at {when}', '</li>', '</tpl>', '</tpl>', '</ul>', '<span class="messagethread-reveal">Reveal</span>', '<span class="messagethread-reload">Reload</span>', '</tpl>', '</div>', '</tpl>', '<div class="estimateselector"></div>', '<tpl if="this.discussionThread.length">', '<div class="discussionthread">', '<h3>Discussion</h3>', '<tpl for="discussionThread">', '<div class="discussionitem">', '<small class="discussionitem-id">{name}: {when}</small>', '<p class="discussionitem-text">{text}</p>', '</div>', '</tpl>', '</div>', '</tpl>', '</tpl></tpl>', {
         isTeamMember: _this.Account.isTeamMember,
         showEstimates: false,
         revealCard: _this.PokerDeck.revealCard,
         myVote: false,
-        shownMessages: false,
-        shownDiscussion: false,
-        whoVoted: {}
+        whoVoted: {},
+        messageThread: [],
+        discussionThread: []
       }),
       itemSelector: 'div.discussionitem',
       prepareData: function(data, index, record) {
-        var A, D, V, k, _i, _len, _ref;
+        var timestamp = data.CreationDate.getTime();
+        var A, D, V, k, _i, _len, _ref, _ref1;
 
         if (data.Message) {
-          var timestamp = data.CreationDate.getTime();
           if ((this.tpl.whoVoted[data.User._ref] == null) || timestamp > this.tpl.whoVoted[data.User._ref].when) {
             this.tpl.whoVoted[data.User._ref] = {
               post: data.ObjectID,
@@ -369,6 +369,12 @@ Ext.define('RallyPokerApp', {
               vote: data.Message
             };
           }
+        } else {
+          this.tpl.discussionThread.push({
+            when: timestamp,
+            name: data.User._refObjectName,
+            text: data.Text
+          });
         }
         if (index === this.store.data.length - 1) {
           var whenVoted = [], voteMap = {};
@@ -380,19 +386,21 @@ Ext.define('RallyPokerApp', {
               this.tpl.myVote = V;
             }
             if (this.tpl.whoVoted.hasOwnProperty(k)) {
-              whenVoted.push(V.when);
+              this.tpl.messageThread.push(V.when);
               voteMap[V.when] = V;
             }
           }
-          whenVoted.sort();
-          for (_i = 0, _len = whenVoted.length; _i < _len; _i++) {
-            k = whenVoted[_i];
+          this.tpl.messageThread.sort();
+          _ref1 = this.tpl.messageThread;
+          for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+            k = _ref1[_i];
             D = new Date(voteMap[k].when);
             voteMap[k].when = Ext.util.Format.date(D, 'g:iA') + ' on ' + Ext.util.Format.date(D, 'm-d-Y');
             A = /user\/(\d+)/.exec(voteMap[k].user);
             voteMap[k].user = A[1];
             data.whoVoted.push(voteMap[k]);
           }
+          data.discussionThread = this.tpl.discussionThread;
         }
         return data;
       },
@@ -412,9 +420,9 @@ Ext.define('RallyPokerApp', {
             Ext.get(view.el.query('.messagethread-reload')).on('click', view._onReload, this);
           }
           view.tpl.myVote = false;
-          view.tpl.shownMessages = false;
-          view.tpl.shownDiscussion = false;
           view.tpl.whoVoted = {};
+          view.tpl.messageThread = [];
+          view.tpl.discussionThread = [];
         }
       },
       _onReveal: function(e, t) {
