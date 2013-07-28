@@ -249,25 +249,7 @@ Ext.define 'RallyPokerApp', {
     }
     @down('#storyview').add @StoryPage
 
-    # custom field definition to parse poker messages from discussion items.
-    @DiscussionMessageField = new Ext.data.Field {
-      name: 'Message'
-      type: 'string'
-      convert: (v, rec) =>
-        if message = @PokerMessage.extract rec.get 'Text'
-          # Expected message contents: UserID + 4-bit point-selection value
-          (@PokerMessage.parse message, @Base62.decode).pop()
-        else
-          false
-    }
-    Rally.data.ModelFactory.getModel {
-      type: 'conversationpost'
-      success: (Model) =>
-        @models['conversationpost'] = Ext.clone Model
-        Model.prototype.fields.items.push @DiscussionMessageField
-        Model.setFields Model.prototype.fields.items
-        return
-    }
+    # parse poker messages from discussion items.
     @DiscussionsStore = Ext.create 'Rally.data.WsapiDataStore', {
       model: 'conversationpost'
       fetch: ['User', 'CreationDate', 'Text', 'Message']
@@ -336,14 +318,14 @@ Ext.define 'RallyPokerApp', {
       itemSelector: 'div.discussionitem'
       prepareData: (data, index, record) ->
         `var timestamp = data.CreationDate.getTime()`
-        if data.Message
+        if message = _this.PokerMessage.extract data.Text
           if not @tpl.whoVoted[data.User._ref]? or timestamp > @tpl.whoVoted[data.User._ref].when
             @tpl.whoVoted[data.User._ref] =
               post: data.ObjectID
               when: timestamp
               user: data.User._ref
               name: data.User._refObjectName
-              vote: data.Message
+              vote: (_this.PokerMessage.parse message, _this.Base62.decode).pop()
         else
           @tpl.discussionThread.push
             when: timestamp

@@ -318,27 +318,6 @@ Ext.define('RallyPokerApp', {
       itemSelector: 'div.storydetail'
     });
     this.down('#storyview').add(this.StoryPage);
-    this.DiscussionMessageField = new Ext.data.Field({
-      name: 'Message',
-      type: 'string',
-      convert: function(v, rec) {
-        var message;
-
-        if (message = _this.PokerMessage.extract(rec.get('Text'))) {
-          return (_this.PokerMessage.parse(message, _this.Base62.decode)).pop();
-        } else {
-          return false;
-        }
-      }
-    });
-    Rally.data.ModelFactory.getModel({
-      type: 'conversationpost',
-      success: function(Model) {
-        _this.models['conversationpost'] = Ext.clone(Model);
-        Model.prototype.fields.items.push(_this.DiscussionMessageField);
-        Model.setFields(Model.prototype.fields.items);
-      }
-    });
     this.DiscussionsStore = Ext.create('Rally.data.WsapiDataStore', {
       model: 'conversationpost',
       fetch: ['User', 'CreationDate', 'Text', 'Message']
@@ -357,16 +336,16 @@ Ext.define('RallyPokerApp', {
       itemSelector: 'div.discussionitem',
       prepareData: function(data, index, record) {
         var timestamp = data.CreationDate.getTime();
-        var A, D, V, k, _i, _len, _ref, _ref1;
+        var A, D, V, k, message, _i, _len, _ref, _ref1;
 
-        if (data.Message) {
+        if (message = _this.PokerMessage.extract(data.Text)) {
           if ((this.tpl.whoVoted[data.User._ref] == null) || timestamp > this.tpl.whoVoted[data.User._ref].when) {
             this.tpl.whoVoted[data.User._ref] = {
               post: data.ObjectID,
               when: timestamp,
               user: data.User._ref,
               name: data.User._refObjectName,
-              vote: data.Message
+              vote: (_this.PokerMessage.parse(message, _this.Base62.decode)).pop()
             };
           }
         } else {
