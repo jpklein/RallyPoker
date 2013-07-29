@@ -190,13 +190,11 @@ Ext.define 'RallyPokerApp', {
             Ext.get('storytitle').update storyListItemName
 
             storyListItemId = StoryListItem.getAttribute 'data-id'
-            @CurrentStory.load {
+            @CurrentStory.load
               filters: [{ property: 'ObjectID', value: storyListItemId }]
-            }
-            # always load the store so that its view is reprocessed.
-            @DiscussionsStore.load {
+            @DiscussionsStore.load
               filters: [{ property: 'Artifact.ObjectID', value: storyListItemId }]
-            }
+
             @getLayout().setActiveItem 'storyview'
             return
     }
@@ -212,7 +210,7 @@ Ext.define 'RallyPokerApp', {
     @CurrentStory = Ext.create 'Rally.data.WsapiDataStore', {
       model: 'userstory'
       limit: 1,
-      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
+      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion', 'PlanEstimate']
     }
     @StoryPage = Ext.create 'Ext.view.View', {
       store: @CurrentStory
@@ -228,7 +226,7 @@ Ext.define 'RallyPokerApp', {
           '</div>',
           '<div class="storydetail-notes">',
             '<h3>Notes<h3>{Notes}',
-          '</div>',
+          # '</div>Planning Points: {PlanEstimate}',
         '</div>',
         '</tpl>',
         {
@@ -248,6 +246,47 @@ Ext.define 'RallyPokerApp', {
       itemSelector: 'div.storydetail'
     }
     @down('#storyview').add @StoryPage
+
+    if not @Account.isTeamMember
+      @PointForm = Ext.create 'Ext.form.Panel',
+        # title: 'Simple Form'
+        # bodyPadding: 5
+        # width: 350
+        layout: 'hbox' # 'anchor'
+        # defaults: { anchor: '100%' }
+        border: false
+
+        defaultType: 'textfield'
+        items: [{
+          fieldLabel: 'Planning Points'
+          name: 'PlanEstimate'
+          allowBlank: true
+        }]
+
+        buttons: [{
+          text: 'Reset'
+          handler: -> @up('form').getForm().reset()
+        }, {
+          text: 'Submit'
+          # formBind: true # only enabled once the form is valid
+          # disabled: true
+          handler: ->
+            `var form = this.up('form').getForm()`
+            if form.isValid()
+              form.submit
+                success: (form, action) -> 
+                  Ext.Msg.alert 'Success', action.result.msg
+                  return
+                failure: (form, action) ->
+                  Ext.Msg.alert 'Failed', action.result.msg
+                  return
+        }]
+        # renderTo: Ext.getBody()
+      @down('#storyview').add @PointForm
+      _onStoryPageRefresh = (view) ->
+        @PointForm.loadRecord(@CurrentStory.getAt 0)
+        return
+      @StoryPage.on 'refresh', _onStoryPageRefresh, @
 
     # parse poker messages from discussion items.
     @DiscussionsStore = Ext.create 'Rally.data.WsapiDataStore', {
@@ -368,8 +407,6 @@ Ext.define 'RallyPokerApp', {
           view.tpl.discussionThread = []
           return
       _onReveal: (e, t) ->
-        # for C in Ext.get(t).prev('.messageitems').query('li .pokercard')
-        #   Ext.get(C).setHTML @PokerDeck.revealCard(C.getAttribute('data-vote'), C.getAttribute('data-userid')) + ' by '
         @DiscussionThread.tpl.showEstimates = true
         @DiscussionsStore.reload()
         return

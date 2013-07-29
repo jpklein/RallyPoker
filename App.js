@@ -169,7 +169,7 @@ Ext.define('RallyPokerApp', {
     };
   })(),
   launch: function() {
-    var projectID,
+    var projectID, _onStoryPageRefresh,
       _this = this;
 
     this.Account = this.getContext().getUser();
@@ -299,11 +299,11 @@ Ext.define('RallyPokerApp', {
     this.CurrentStory = Ext.create('Rally.data.WsapiDataStore', {
       model: 'userstory',
       limit: 1,
-      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion']
+      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion', 'PlanEstimate']
     });
     this.StoryPage = Ext.create('Ext.view.View', {
       store: this.CurrentStory,
-      tpl: new Ext.XTemplate('<tpl for=".">', '<div class="storydetail" data-id="{ObjectID}">', '<small class="storydetail-date">Last Updated: {[this.prettyDate(values.LastUpdateDate)]}</small>', '<div class="storydetail-description">', '{Description}', '</div>', '<div class="storydetail-attachments">', '<h3>Attachments<h3>{Attachments}', '</div>', '<div class="storydetail-notes">', '<h3>Notes<h3>{Notes}', '</div>', '</div>', '</tpl>', {
+      tpl: new Ext.XTemplate('<tpl for=".">', '<div class="storydetail" data-id="{ObjectID}">', '<small class="storydetail-date">Last Updated: {[this.prettyDate(values.LastUpdateDate)]}</small>', '<div class="storydetail-description">', '{Description}', '</div>', '<div class="storydetail-attachments">', '<h3>Attachments<h3>{Attachments}', '</div>', '<div class="storydetail-notes">', '<h3>Notes<h3>{Notes}', '</div>', '</tpl>', {
         prettyDate: function(date) {
           var day_diff, diff;
 
@@ -318,6 +318,47 @@ Ext.define('RallyPokerApp', {
       itemSelector: 'div.storydetail'
     });
     this.down('#storyview').add(this.StoryPage);
+    if (!this.Account.isTeamMember) {
+      this.PointForm = Ext.create('Ext.form.Panel', {
+        layout: 'hbox',
+        border: false,
+        defaultType: 'textfield',
+        items: [
+          {
+            fieldLabel: 'Planning Points',
+            name: 'PlanEstimate',
+            allowBlank: true
+          }
+        ],
+        buttons: [
+          {
+            text: 'Reset',
+            handler: function() {
+              return this.up('form').getForm().reset();
+            }
+          }, {
+            text: 'Submit',
+            handler: function() {
+              var form = this.up('form').getForm();              if (form.isValid()) {
+                return form.submit({
+                  success: function(form, action) {
+                    Ext.Msg.alert('Success', action.result.msg);
+                  },
+                  failure: function(form, action) {
+                    Ext.Msg.alert('Failed', action.result.msg);
+                  }
+                });
+              }
+            }
+          }
+        ]
+      });
+      this.down('#storyview').add(this.PointForm);
+      _onStoryPageRefresh = function(view) {
+        this.PointForm.loadRecord(this.CurrentStory.getAt(0));
+      };
+      this.StoryPage.on('refresh', _onStoryPageRefresh, this);
+    }
     this.DiscussionsStore = Ext.create('Rally.data.WsapiDataStore', {
       model: 'conversationpost',
       fetch: ['User', 'CreationDate', 'Text', 'Message']
@@ -335,6 +376,7 @@ Ext.define('RallyPokerApp', {
       }),
       itemSelector: 'div.discussionitem',
       prepareData: function(data, index, record) {
+        debugger;
         var timestamp = data.CreationDate.getTime();
         var A, D, V, k, message, _i, _len, _ref, _ref1;
 
