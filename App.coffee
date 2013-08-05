@@ -210,7 +210,7 @@ Ext.define 'RallyPokerApp', {
     @CurrentStory = Ext.create 'Rally.data.WsapiDataStore', {
       model: 'userstory'
       limit: 1,
-      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion', 'PlanEstimate']
+      fetch: ['ObjectID', 'Name', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion', 'PlanEstimate']
     }
     @StoryPage = Ext.create 'Ext.view.View', {
       store: @CurrentStory
@@ -261,6 +261,11 @@ Ext.define 'RallyPokerApp', {
           fieldLabel: 'Planning Points'
           name: 'PlanEstimate'
           allowBlank: true
+          listeners:
+            scope: @
+            specialkey: (field, e) ->
+              # @todo replace with call to submit function
+              @PointForm.submit() if e.getKey() is e.ENTER
         }]
 
         buttons: [{
@@ -273,16 +278,31 @@ Ext.define 'RallyPokerApp', {
           handler: ->
             `var form = this.up('form').getForm()`
             if form.isValid()
-              form.submit
-                success: (form, action) -> 
-                  Ext.Msg.alert 'Success', action.result.msg
+              # form.submit
+              #   success: (form, action) ->
+              #     debugger
+              #     Ext.Msg.alert 'Success', action.result.msg
+              #     return
+              #   failure: (form, action) ->
+              #     debugger
+              #     Ext.Msg.alert 'Failed', action.result.msg
+              #     return
+              debugger
+              form.updateRecord()
+              # alert 'record updated?'
+              form.getRecord().store.sync
+                success: (batch, options) ->
+                  alert 'Success'
                   return
-                failure: (form, action) ->
-                  Ext.Msg.alert 'Failed', action.result.msg
+                failure: (batch, options) ->
+                  alert 'Failure'
                   return
+              return
+            else
+              alert 'form invalid'
         }]
-        # renderTo: Ext.getBody()
       @down('#storyview').add @PointForm
+
       _onStoryPageRefresh = (view) ->
         @PointForm.loadRecord(@CurrentStory.getAt 0)
         return

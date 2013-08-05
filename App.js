@@ -299,7 +299,7 @@ Ext.define('RallyPokerApp', {
     this.CurrentStory = Ext.create('Rally.data.WsapiDataStore', {
       model: 'userstory',
       limit: 1,
-      fetch: ['ObjectID', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion', 'PlanEstimate']
+      fetch: ['ObjectID', 'Name', 'LastUpdateDate', 'Description', 'Attachments', 'Notes', 'Discussion', 'PlanEstimate']
     });
     this.StoryPage = Ext.create('Ext.view.View', {
       store: this.CurrentStory,
@@ -327,7 +327,15 @@ Ext.define('RallyPokerApp', {
           {
             fieldLabel: 'Planning Points',
             name: 'PlanEstimate',
-            allowBlank: true
+            allowBlank: true,
+            listeners: {
+              scope: this,
+              specialkey: function(field, e) {
+                if (e.getKey() === e.ENTER) {
+                  return this.PointForm.submit();
+                }
+              }
+            }
           }
         ],
         buttons: [
@@ -340,14 +348,18 @@ Ext.define('RallyPokerApp', {
             text: 'Submit',
             handler: function() {
               var form = this.up('form').getForm();              if (form.isValid()) {
-                return form.submit({
-                  success: function(form, action) {
-                    Ext.Msg.alert('Success', action.result.msg);
+                debugger;
+                form.updateRecord();
+                form.getRecord().store.sync({
+                  success: function(batch, options) {
+                    alert('Success');
                   },
-                  failure: function(form, action) {
-                    Ext.Msg.alert('Failed', action.result.msg);
+                  failure: function(batch, options) {
+                    alert('Failure');
                   }
                 });
+              } else {
+                return alert('form invalid');
               }
             }
           }
@@ -376,7 +388,6 @@ Ext.define('RallyPokerApp', {
       }),
       itemSelector: 'div.discussionitem',
       prepareData: function(data, index, record) {
-        debugger;
         var timestamp = data.CreationDate.getTime();
         var A, D, V, k, message, _i, _len, _ref, _ref1;
 
